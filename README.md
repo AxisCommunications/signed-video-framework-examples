@@ -11,5 +11,8 @@ Below is a list of example applications available in the repository.
 - validator
   - The example code implements a gstAppSink that process every NAL and validates the authenticity repeatedly.
 
+## Example files
+In [test-files/](./test-files/) shorter mp4 recordings using H264 and H265 are found for both signed and unsigned videos.
+
 # License
 [MIT License](./LICENSE)
