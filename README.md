@@ -1,3 +1,5 @@
+*Copyright (C) 2021, Axis Communications AB, Lund, Sweden. All Rights Reserved.*
+
 # What is Signed Video Framework?
 The *Signed Video Framework* is an open-source project that secures an H264, or H265, video from tampering by adding cryptographic signatures in SEI frames. See the [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework) for more details.
 
