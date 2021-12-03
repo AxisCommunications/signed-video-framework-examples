@@ -1,3 +1,5 @@
+*Copyright (C) 2021, Axis Communications AB, Lund, Sweden. All Rights Reserved.*
+
 # Application to validate video authenticity
 Note: This ewxample application code also serves as example code for how to implement the validation side of
 the *Signed Video Framework*.
@@ -24,5 +26,5 @@ H265.
 
 Note: There is currently a known flaw in
 [signed_test_h265.mp4](../../test-files/signed_test_h265.mp4) where the timestamps of the first NALs
-are not set correctly. This effects the validation of the first GOP, which is displayed as *signed*,
-which means we know it is signed, but we cannot validate it.
+are not set correctly. This affects the validation of the first GOP, which is displayed as *signed*,
+hence, a signature has so far been detected but there is no signature for the first GOP.
