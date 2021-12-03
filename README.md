@@ -6,13 +6,13 @@ This repository contains a set of application examples which aims to enrich the 
 
 ## Example applications
 Below is a list of example applications available in the repository.
-- signer
-  - The example code implements a gStreamer element that process every NAL and adds SEI NALs to the stream repeatedly.
-- validator
-  - The example code implements a gstAppSink that process every NAL and validates the authenticity repeatedly.
+- [signer](./apps/signer/)
+  - The example code implements video signing.
+- [validator](./apps/validator/)
+  - The example code implements video authenticity validation.
 
 ## Example files
-In [test-files/](./test-files/) shorter mp4 recordings using H264 and H265 are found for both signed and unsigned videos.
+Shorter mp4 recordings for testing can be found in [test-files/](./test-files/).
 
 # License
 [MIT License](./LICENSE)

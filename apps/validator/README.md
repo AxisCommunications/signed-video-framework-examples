@@ -1,18 +1,20 @@
-## Application to validate authenticity
-Note: This application code also serves as example code for how to implement the validation side of
+# Application to validate video authenticity
+Note: This ewxample application code also serves as example code for how to implement the validation side of
 the *Signed Video Framework*.
 
-### Prerequisites
+## Prerequisites
 This application relies on GstAppSink (part of gStreamer) and signed-video-framework.
 - [gStreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c)
 - [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework)
 
-### Description
+## Description
 The application process NAL by NAL and validates the authenticity continuously. The result is
 written on screen and in addition, a summary is written to the file validation_results.txt.
 
+It is implemented as a GstAppSink that process every NAL and validates the authenticity on-the-fly.
+
 ## Running
-Validate an MP4 file of an H264 video using the app
+Validate an mp4 file of an H264 video using the app
 ```
 ./path/to/your/installed/validator.exe -c h264 signed_test_h264.mp4
 ```
