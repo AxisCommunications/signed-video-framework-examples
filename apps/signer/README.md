@@ -1,3 +1,5 @@
+*Copyright (C) 2021, Axis Communications AB, Lund, Sweden. All Rights Reserved.*
+
 # Application to sign a video file
 Note: This example application code also serves as example code for how to implement the signing side of the
 *Signed Video Framework*.
