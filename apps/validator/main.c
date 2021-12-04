@@ -203,7 +203,8 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       strcat(result, " : ");
       strcat(result, data->auth_report->latest_validation.validation_str);
       post_validation_result_message(sink, bus, result);
-      // Allocate memory for |product_info| when we receive the first authenticity report.
+      // Allocate memory for |product_info| the first time it will be copied from the authenticity
+      // report.
       if (!data->product_info) {
         data->product_info =
             (signed_video_product_info_t *)g_malloc0(sizeof(signed_video_product_info_t));
@@ -223,7 +224,7 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
   return GST_FLOW_OK;
 }
 
-/* Called when we get a GstMessage from the source pipeline. */
+/* Called when a GstMessage is received from the source pipeline. */
 static gboolean
 on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, ValidationData *data)
 {
@@ -380,9 +381,8 @@ main(int argc, char **argv)
   bus = gst_element_get_bus(data->source);
   gst_bus_add_watch(bus, (GstBusFunc)on_source_message, data);
 
-  // We use appsink in push mode, it sends us a signal when data is available and we pull out the
-  // data in the signal callback. We want the appsink to push as fast as it can, hence set
-  // sync=false.
+  // Use appsink in push mode. It sends a signal when data is available and pulls out the data in
+  // the signal callback. Set the appsink to push as fast as possible, hence set sync=false.
   validatorsink = gst_bin_get_by_name(GST_BIN(data->source), "validatorsink");
   g_object_set(G_OBJECT(validatorsink), "emit-signals", TRUE, "sync", FALSE, NULL);
   g_signal_connect(validatorsink, "new-sample", G_CALLBACK(on_new_sample_from_sink), data);
