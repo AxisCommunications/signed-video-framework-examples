@@ -241,7 +241,7 @@ gst_signing_transform_ip(GstBaseTransform *trans, GstBuffer *buf)
 
     // Depending on bitstream format the start code is optional, hence libsigned-video supports
     // both. Therefore, since the start code in the pipeline temporarily may have been replaced by
-    // the picture data size this format is violated. To pass in valid input data we skip the first
+    // the picture data size this format is violated. To pass in valid input data, skip the first
     // four bytes.
     sv_rc = signed_video_add_nalu_for_signing(
         signing->priv->signed_video, &(map_info.data[4]), map_info.size - 4);
@@ -264,7 +264,7 @@ gst_signing_transform_ip(GstBaseTransform *trans, GstBuffer *buf)
   }
 
   if (prepend_count > 0) {
-    // Push an event to produce a message saying we have added SEIs.
+    // Push an event to produce a message saying SEIs have been added.
     GstStructure *structure = gst_structure_new(
         SIGNING_STRUCTURE_NAME, SIGNING_FIELD_NAME, G_TYPE_STRING, "signed", NULL);
     if (!gst_element_post_message(
