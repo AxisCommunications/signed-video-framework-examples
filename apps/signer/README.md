@@ -30,8 +30,9 @@ The example commands also assume that both signed-video-framework and signed-vid
 meson --prefix $PWD/my_installs signed-video-framework build_lib
 meson install -C build_lib
 ```
-Then build and install the `signer.exe` as
+Then build and install the `signer.exe` as below. Since this application is implemented as a gStreamer set `GST_PLUGIN_PATH` for gStreamer to find it.
 ```
+export GST_PLUGIN_PATH=$PWD/my_installs
 meson --prefix $PWD/my_installs -Dsigner=true signed-video-framework-examples build_apps
 meson install -C build_apps
 ```
@@ -42,7 +43,7 @@ Sign an mp4 file of an H264 video using the app
 ```
 ./path/to/your/installed/signer.exe -c h264 test_h264.mp4
 ```
-With the example Linux commands above testing `test_h264.mp4` in [test-files/](../../test-files/)
+With the example Linux commands above testing `test_h264.mp4` in [test-files/](../../test-files/).
 ```
 ./my_installs/bin/signer.exe -c h264 signed-video-framework-examples/test-files/test_h264.mp4
 ```
