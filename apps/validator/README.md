@@ -17,6 +17,8 @@ It is implemented as a GstAppSink that process every NAL and validates the authe
 
 ## Building the validator application
 Below are meson commands to build the validator application. First you need to have the signed-video-framework library installed. Installing the share library and applications locally is in many cases preferably.
+
+Then build the validator application with meson as
 ```
 meson -Dvalidator=true path/to/signed-video-framework-examples path/to/build/folder
 meson install -C path/to/build/folder
