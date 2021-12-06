@@ -1,7 +1,7 @@
 *Copyright (C) 2021, Axis Communications AB, Lund, Sweden. All Rights Reserved.*
 
 # Application to validate video authenticity
-Note: This ewxample application code also serves as example code for how to implement the validation side of
+Note: This example application code also serves as example code for how to implement the validation side of
 the *Signed Video Framework*.
 
 ## Prerequisites
@@ -10,13 +10,13 @@ This application relies on GstAppSink (part of gStreamer) and signed-video-frame
 - [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework)
 
 ## Description
-The application process NAL by NAL and validates the authenticity continuously. The result is
-written on screen and in addition, a summary is written to the file validation_results.txt.
+The application process NALU by NALU and validates the authenticity continuously. The result is
+written on screen and in addition, a summary is written to the file *validation_results.txt*.
 
-It is implemented as a GstAppSink that process every NAL and validates the authenticity on-the-fly.
+It is implemented as a GstAppSink that process every NALU and validates the authenticity on-the-fly.
 
 ## Building the validator application
-Below are meson commands to build the validator application. First you need to have the signed-video-framework library installed. Installing the share library and applications locally is in many cases preferably.
+Below are meson commands to build the validator application. First you need to have the signed-video-framework library installed.
 
 Then build the validator application with meson as
 ```
@@ -25,12 +25,14 @@ meson install -C path/to/build/folder
 ```
 
 ### Example meson commands on Linux
-The example commands also assume that both signed-video-framework and signed-video-framework-examples are located in the current directory.
+These example commands assume the current directory is the parent directory of both signed-video-framework and signed-video-framework-examples.
+
+Build and install the library locally in `./my_installs/`.
 ```
 meson --prefix $PWD/my_installs signed-video-framework build_lib
 meson install -C build_lib
 ```
-Then build and install the `validator.exe` as
+Then build and install the `validator.exe` in the same place
 ```
 meson --prefix $PWD/my_installs -Dvalidator=true signed-video-framework-examples build_apps
 meson install -C build_apps
@@ -38,7 +40,7 @@ meson install -C build_apps
 The executable is now located at `./my_installs/bin/validator.exe`
 
 ## Running
-Validate an mp4 file of an H264 video using the app
+Validate an MP4 file of an H264 video using the app
 ```
 ./path/to/your/installed/validator.exe -c h264 signed_test_h264.mp4
 ```
