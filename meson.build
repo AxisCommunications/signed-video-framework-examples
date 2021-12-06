@@ -1,6 +1,6 @@
 project('signed-video-framework-examples', 'c',
   version : '0.0.0',
-  meson_version : '>= 0.47.0',
+  meson_version : '>= 0.49.0',
   default_options : [ 'warning_level=2',
                       'werror=true',
                       'buildtype=debugoptimized' ])

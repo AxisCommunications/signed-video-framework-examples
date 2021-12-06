@@ -6,6 +6,10 @@ The *Signed Video Framework* is an open-source project that secures an H264, or 
 ## Getting started with the repo
 This repository contains a set of application examples which aims to enrich the developers implementation experience. All examples are using the [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework) and has a README file in its directory with instructions on how to build and run it.
 
+The repository uses meson + ninja as default build method. Further, all application examples uses gStreamer APIs.
+- [meson](https://mesonbuild.com/Getting-meson.html) Getting meson and ninja. Meson version 0.49.0 or newer is required.
+- [gStreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c)
+
 ## Example applications
 Below is a list of example applications available in the repository.
 - [signer](./apps/signer/)
