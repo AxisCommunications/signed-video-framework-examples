@@ -14,6 +14,7 @@ The application process a file NAL by NAL and adds signatures in SEIs, provided 
 *Signed Video Framework*. A successfully signed GOP prints it on the screen.
 
 It is implemented as a gStreamer element that process every NAL and adds SEI NALs to the stream repeatedly.
+The signed video is written to a new file, prepending the filenamne with `signed_`. That is, `test_h264.mp4` becomes `signed_test_h264.mp4`. The application requires the file to process to be located in the current directory.
 
 ## Building the signer application
 Below are meson commands to build the signer application. First you need to have the signed-video-framework library installed. Installing the share library and applications locally is in many cases preferably.
@@ -43,9 +44,10 @@ Sign an mp4 file of an H264 video using the app
 ```
 ./path/to/your/installed/signer.exe -c h264 test_h264.mp4
 ```
-With the example Linux commands above testing `test_h264.mp4` in [test-files/](../../test-files/).
+With the example Linux commands above testing `test_h264.mp4` in [test-files/](../../test-files/). Note that the recording to sign has to be present in the current directory.
 ```
-./my_installs/bin/signer.exe -c h264 signed-video-framework-examples/test-files/test_h264.mp4
+cp signed-video-framework-examples/test-files/test_h264.mp4 .
+./my_installs/bin/signer.exe -c h264 test_h264.mp4
 ```
 
 There are unsigned test files in [test-files/](../../test-files/) for both H264 and H265.

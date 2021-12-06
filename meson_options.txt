@@ -1,0 +1,8 @@
+option('signer',
+  type : 'boolean',
+  value : false,
+  description : 'Builds the signer app')
+option('validator',
+  type : 'boolean',
+  value : false,
+  description : 'Builds the validator app')

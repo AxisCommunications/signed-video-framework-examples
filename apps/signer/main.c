@@ -228,6 +228,7 @@ main(gint argc, gchar *argv[])
 
   // Set playing state and start the main loop.
   if (gst_element_set_state(pipeline, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE) {
+    g_message("Failed to start up pipeline!");
     // Check if there is an error message with details on the bus.
     GstMessage *msg = gst_bus_poll(bus, GST_MESSAGE_ERROR, 0);
     if (msg) {
@@ -235,7 +236,7 @@ main(gint argc, gchar *argv[])
       g_printerr("Failed to start up pipeline: %s", error->message);
       gst_message_unref(msg);
     } else {
-      g_error("Failed to start up pipeline!");
+      g_error("No message on the bus");
     }
     goto out;
   }
