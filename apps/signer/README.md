@@ -55,5 +55,5 @@ cp signed-video-framework-examples/test-files/test_h264.mp4 .
 There are unsigned test files in [test-files/](../../test-files/) for both H264 and H265.
 
 Note: There is currently a known flaw when signing H265. The timestamps of the first NALs are not
-set correctly. This effects the validation of the first GOP, which then may not properly parse the
+set correctly. This affects the validation of the first GOP, which then may not properly parse the
 NALs.
