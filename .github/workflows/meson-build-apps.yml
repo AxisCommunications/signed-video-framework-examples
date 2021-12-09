@@ -43,7 +43,8 @@ jobs:
       #- name: Compile and install lib
       #  run: meson install -C build_lib
       - name: Setup meson for the apps
-        run: meson -Dvalidator=false -Dsigner=false --prefix $GST_PLUGIN_PATH svf_apps build_apps
+        run: meson -Dvalidator=false -Dsigner=false svf_apps build_apps
+        #run: meson -Dvalidator=false -Dsigner=false --prefix $GST_PLUGIN_PATH svf_apps build_apps
       - name: Compile the apps
         run: ninja -C build_apps
         #run: meson install -C build_lib
