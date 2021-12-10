@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     # Install libraries and executables locally and tell gStreamer where
     env:
-      GST_PLUGIN_PATH: $GITHUB_WORKSPACE/local_installs
+      GST_PLUGIN_PATH: "$GITHUB_WORKSPACE/local_installs"
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
