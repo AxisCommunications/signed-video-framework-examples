@@ -23,11 +23,11 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out signed-video-framework under $GITHUB_WORKSPACE, so your job can access it
-      #- uses: actions/checkout@v2
-      #  with:
-      #    repository: AxisCommunications/signed-video-framework
-      #    path: svf_lib
+      # Checks-out signed-video-framework under $GITHUB_WORKSPACE, so the apps can access it
+      - uses: actions/checkout@v2
+        with:
+          repository: AxisCommunications/signed-video-framework
+          path: svf_lib
       - uses: actions/checkout@v2
         with:
           path: svf_apps
