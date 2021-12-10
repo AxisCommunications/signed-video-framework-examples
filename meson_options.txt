@@ -6,3 +6,8 @@ option('validator',
   type : 'boolean',
   value : false,
   description : 'Builds the validator app')
+
+option('build_all_apps',
+  type : 'boolean',
+  value : false,
+  description : 'Builds all apps')
