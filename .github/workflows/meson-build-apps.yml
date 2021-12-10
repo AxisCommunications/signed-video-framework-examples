@@ -18,8 +18,8 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     # Install libraries and executables locally and tell gStreamer where
-    env:
-      GST_PLUGIN_PATH: '$GITHUB_WORKSPACE/local_installs'
+    #env:
+    #  GST_PLUGIN_PATH: '$GITHUB_WORKSPACE/local_installs'
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -31,10 +31,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           path: svf_apps
-      - name: Print install path
-        run: |
-          echo $GITHUB_WORKSPACE
-          echo $GST_PLUGIN_PATH
       - name: Install meson
         run: python -m pip install meson==0.53.2
       - name: Install ninja
@@ -48,7 +44,7 @@ jobs:
       - name: Install gStreamer from package manager
         run: sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-doc gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
       - name: Setup meson for the apps
-        run: meson -Dbuild_all_apps=false --prefix $GST_PLUGIN_PATH svf_apps build_apps
+        run: meson -Dbuild_all_apps=false --prefix $GITHUB_WORKSPACE/local_installs svf_apps build_apps
       - name: Compile the apps
         run: ninja -C build_apps
         #run: meson install -C build_lib
