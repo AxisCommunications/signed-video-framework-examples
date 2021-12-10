@@ -29,6 +29,7 @@ Assuming the signed-video-framework library is installed and accessible build th
 meson -D<application>=true path/to/signed-video-framework-examples path/to/build/folder
 meson install -C path/to/build/folder
 ```
+Multiple applications can be built by adding multiple `-D` options, and for convenience, the option `-Dbuild_all_apps=true` builds all available applications.
 Note that some applications require additional environment variables set, for example, `GST_PLUGIN_PATH`; See, individual application README.md.
 
 #### Example meson commands on Linux
