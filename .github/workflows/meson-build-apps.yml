@@ -46,6 +46,11 @@ jobs:
       - name: Setup meson for the apps
         run: meson -Dbuild_all_apps=true --prefix $GITHUB_WORKSPACE/local_installs svf_apps build_apps
       - name: Compile the apps
-        run: ninja -C build_apps
-        #run: meson install -C build_lib
-      #- name: Run executables on test-files
+        run: meson install -C build_lib
+      - name: Run validator on test-files
+        run: |
+          $GITHUB_WORKSPACE/local_installs/bin/validator.exe -c h264 svf_apps/test-files/test_h264.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator.exe -c h264 svf_apps/test-files/signed_test_h264.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator.exe -c h264 svf_apps/test-files/signed_test_h264_modified_frame_137.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator.exe -c h265 svf_apps/test-files/test_h265.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator.exe -c h265 svf_apps/test-files/signed_test_h265.mp4
