@@ -49,6 +49,8 @@ typedef struct {
   signed_video_t *sv;
   signed_video_authenticity_t *auth_report;
   signed_video_product_info_t *product_info;
+  char *version_on_signing_side;
+  char *this_version;
 
   gint valid_gops;
   gint invalid_gops;
@@ -212,6 +214,25 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       if (!copy_product_info(data->product_info, &(data->auth_report->product_info))) {
         g_warning("product info could not be transfered from authenticity report");
       }
+      // Allocate memory and copy version strings.
+      if (!data->this_version && strlen(data->auth_report->this_version) > 0) {
+        data->this_version = g_malloc0(strlen(data->auth_report->this_version) + 1);
+        if (!data->this_version) {
+          g_warning("failed allocating memory for this_version");
+        } else {
+          strcpy(data->this_version, data->auth_report->this_version);
+        }
+      }
+      if (!data->version_on_signing_side &&
+          (strlen(data->auth_report->version_on_signing_side) > 0)) {
+        data->version_on_signing_side =
+            g_malloc0(strlen(data->auth_report->version_on_signing_side) + 1);
+        if (!data->version_on_signing_side) {
+          g_warning("failed allocating memory for version_on_signing_side");
+        } else {
+          strcpy(data->version_on_signing_side, data->auth_report->version_on_signing_side);
+        }
+      }
       signed_video_authenticity_report_free(data->auth_report);
       g_free(result);
     }
@@ -229,6 +250,8 @@ static gboolean
 on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, ValidationData *data)
 {
   FILE *f = NULL;
+  char *this_version = data->this_version;
+  char *signing_version = data->version_on_signing_side;
   switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_EOS:
       g_debug("received EOS");
@@ -264,7 +287,16 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         fprintf(f, "NOT PRESENT!\n");
       }
       fprintf(f, "----------------------------\n");
+      fprintf(f, "\nSigned Video versions\n");
+      fprintf(f, "----------------------------\n");
+      fprintf(f, "Validator:    %s\n", this_version ? this_version : "N/A");
+      fprintf(f, "Signing side: %s\n", signing_version ? signing_version : "N/A");
+      fprintf(f, "----------------------------\n");
       fclose(f);
+      g_message("Validation performed with Signed Video version %s", this_version);
+      if (signing_version) {
+        g_message("Signing was performed with Signed Video version %s", signing_version);
+      }
       g_message("Validation complete. Results printed to '%s'.", RESULTS_FILE);
       g_main_loop_quit(data->loop);
       break;
@@ -420,6 +452,8 @@ out:
     g_main_loop_unref(data->loop);
     signed_video_free(data->sv);
     g_free(data->product_info);
+    g_free(data->this_version);
+    g_free(data->version_on_signing_side);
     g_free(data);
   }
 
