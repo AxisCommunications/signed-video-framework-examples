@@ -67,6 +67,8 @@ typedef struct {
 
 #define VALIDATION_STRUCTURE_NAME "validation-result"
 #define VALIDATION_FIELD_NAME "result"
+#define NALU_STRUCTURE_NAME "nalu-list"
+#define NALU_FIELD_NAME "nalulist"
 
 /* Helper function that copies a string and (re)allocates memory if necessary. */
 static gint
@@ -128,6 +130,16 @@ post_validation_result_message(GstAppSink *sink, GstBus *bus, const gchar *resul
   }
 }
 
+static void
+post_nalu_list_message(GstAppSink *sink, GstBus *bus, const gchar *result)
+{
+  GstStructure *structure = gst_structure_new(NALU_STRUCTURE_NAME, NALU_FIELD_NAME, G_TYPE_STRING, result, NULL);
+
+  if (!gst_bus_post(bus, gst_message_new_element(GST_OBJECT(sink), structure))) {
+    g_error("failed to post nalu list message");
+  }
+}
+
 /* Called when the appsink notifies us that there is a new buffer ready for processing. */
 static GstFlowReturn
 on_new_sample_from_sink(GstElement *elt, ValidationData *data)
@@ -172,10 +184,14 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       g_message("error during verification of signed video");
       g_debug("error during verification of signed video");
       post_validation_result_message(sink, bus, VALIDATION_ERROR);
+      post_nalu_list_message(sink, bus, VALIDATION_ERROR);
     } else if (data->auth_report) {
       gsize str_size = VALIDATION_STR_SIZE;
-      str_size += strlen(data->auth_report->latest_validation.validation_str) + 1;
+      gsize nalu_str_size = VALIDATION_STR_SIZE;
+      str_size += strlen(data->auth_report->latest_validation.validation_str) + 2;
+      nalu_str_size += strlen(data->auth_report->latest_validation.nalu_str) + 1;
       gchar *result = g_malloc0(str_size);
+      gchar *nalulist = g_malloc0(nalu_str_size);
       switch (data->auth_report->latest_validation.authenticity) {
         case SV_AUTH_RESULT_OK:
           data->valid_gops++;
@@ -202,8 +218,12 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
         default:
           break;
       }
+      strcpy(nalulist, "      : ");
+      strcat(nalulist, data->auth_report->latest_validation.nalu_str);
+      post_nalu_list_message(sink, bus, nalulist);
       strcat(result, " : ");
       strcat(result, data->auth_report->latest_validation.validation_str);
+      strcat(result, "\n");
       post_validation_result_message(sink, bus, result);
       // Allocate memory for |product_info| the first time it will be copied from the authenticity
       // report.
@@ -235,6 +255,7 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       }
       signed_video_authenticity_report_free(data->auth_report);
       g_free(result);
+      g_free(nalulist);
     }
     gst_memory_unmap(mem, &info);
   }
@@ -306,6 +327,10 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       break;
     case GST_MESSAGE_ELEMENT: {
       const GstStructure *s = gst_message_get_structure(message);
+      if (strcmp(gst_structure_get_name(s), NALU_STRUCTURE_NAME) == 0) {
+        const gchar *result = gst_structure_get_string(s, NALU_FIELD_NAME);
+        g_message("Added NALUs for validation:\t%s", result);
+      }
       if (strcmp(gst_structure_get_name(s), VALIDATION_STRUCTURE_NAME) == 0) {
         const gchar *result = gst_structure_get_string(s, VALIDATION_FIELD_NAME);
         g_message("Latest authenticity result:\t%s", result);
