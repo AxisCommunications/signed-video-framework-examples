@@ -218,7 +218,10 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
         default:
           break;
       }
-      strcpy(nalulist, "      : ");
+      gsize yo_man = strlen(result);
+      strcpy(nalulist, " ");
+      for (gsize jj = 1; jj < yo_man; jj++) strcat(nalulist, " ");
+      strcat(nalulist, " : ");
       strcat(nalulist, data->auth_report->latest_validation.nalu_str);
       post_nalu_list_message(sink, bus, nalulist);
       strcat(result, " : ");
