@@ -33,11 +33,10 @@
 #include <glib.h>
 #include <gst/app/gstappsink.h>
 #include <gst/gst.h>
-#include <stdio.h>  // FILE, fopen, fclose
-#include <string.h>  // strcpy, strcat, strcmp, strlen
-
 #include <signed-video-framework/signed_video_auth.h>
 #include <signed-video-framework/signed_video_common.h>
+#include <stdio.h>  // FILE, fopen, fclose
+#include <string.h>  // strcpy, strcat, strcmp, strlen
 
 #define RESULTS_FILE "validation_results.txt"
 
@@ -247,7 +246,7 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
 
 /* Called when a GstMessage is received from the source pipeline. */
 static gboolean
-on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, ValidationData *data)
+on_source_message(GstBus __attribute__((unused)) * bus, GstMessage *message, ValidationData *data)
 {
   FILE *f = NULL;
   char *this_version = data->this_version;
@@ -366,7 +365,7 @@ main(int argc, char **argv)
 
   // Parse filename.
   if (arg < argc) filename = argv[arg];
-  if (!filename ) {
+  if (!filename) {
     g_warning("no filename was specified\n%s", usage);
     goto out;
   }
