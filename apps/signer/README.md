@@ -42,9 +42,9 @@ meson install -C build_apps
 The executable is now located at `./my_installs/bin/signer.exe`
 
 ## Running
-Sign an MP4 file of an H264 video using the app
+Sign an MP4 file of an H264 video with recurrence 1 frames using the app
 ```
-./path/to/your/installed/signer.exe -c h264 test_h264.mp4
+./path/to/your/installed/signer.exe -c h264 -r 1 test_h264.mp4
 ```
 Note that the recording to sign must be present in the current directory, so copy it before signing. With the example Linux commands above sign `test_h264.mp4` in [test-files/](../../test-files/).
 ```

@@ -37,9 +37,13 @@
 GST_DEBUG_CATEGORY_STATIC(gst_signing_debug);
 #define GST_CAT_DEFAULT gst_signing_debug
 
+#define DEFAULT_RECURRENCE 1
+enum { PROP_0, PROP_RECURRENCE };
+
 struct _GstSigningPrivate {
   signed_video_t *signed_video;
   GstClockTime last_pts;
+  gint recurrence;
 };
 
 #define TEMPLATE_CAPS \
@@ -72,6 +76,47 @@ setup_signing(GstSigning *signing, GstCaps *caps);
 static gboolean
 terminate_signing(GstSigning *signing);
 
+//------------------------------------------------------------------------------
+static void
+gst_signed_video_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+  GstSigning *signing = GST_SIGNING(object);
+
+  GST_OBJECT_LOCK(signing);
+  switch (prop_id) {
+    case PROP_RECURRENCE:
+      g_value_set_int(value, signing->priv->recurrence);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK(signing);
+}
+
+static void
+gst_signed_video_set_property(GObject *object,
+    guint prop_id,
+    const GValue *value,
+    GParamSpec *pspec)
+{
+  GstSigning *signing = GST_SIGNING(object);
+  GstSigningPrivate *priv = signing->priv;
+
+  GST_OBJECT_LOCK(signing);
+  switch (prop_id) {
+    case PROP_RECURRENCE:
+      priv->recurrence = g_value_get_int(value);
+      GST_DEBUG_OBJECT(object, "new recurrence: %d", priv->recurrence);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK(signing);
+}
+//------------------------------------------------------------------------------
+
 static void
 gst_signing_class_init(GstSigningClass *klass)
 {
@@ -96,6 +141,14 @@ gst_signing_class_init(GstSigningClass *klass)
   gst_element_class_add_static_pad_template(element_class, &src_template);
 
   gobject_class->finalize = gst_signing_finalize;
+
+  gobject_class->get_property = gst_signed_video_get_property;
+  gobject_class->set_property = gst_signed_video_set_property;
+
+  /* install properties */
+  g_object_class_install_property(gobject_class, PROP_RECURRENCE,
+      g_param_spec_int("recurrence", "Default recurrence", "Recurrence in frames", 0, INT_MAX,
+          DEFAULT_RECURRENCE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -103,6 +156,7 @@ gst_signing_init(GstSigning *signing)
 {
   signing->priv = gst_signing_get_instance_private(signing);
   signing->priv->last_pts = GST_CLOCK_TIME_NONE;
+  signing->priv->recurrence = DEFAULT_RECURRENCE;
 }
 
 static void
@@ -379,8 +433,14 @@ setup_signing(GstSigning *signing, GstCaps *caps)
     goto product_info_failed;
   }
 
+  if (signed_video_set_recurrence_interval_frames(priv->signed_video, priv->recurrence) != SV_OK) {
+    GST_ERROR_OBJECT(signing, "failed to set properties recurrence");
+    goto recurrence_failed;
+  }
+
   return TRUE;
 
+recurrence_failed:
 product_info_failed:
 set_private_key_failed:
 generate_private_key_failed:
