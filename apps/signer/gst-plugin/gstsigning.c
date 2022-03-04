@@ -78,7 +78,7 @@ static gboolean
 terminate_signing(GstSigning *signing);
 
 static void
-gst_signed_video_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+gst_signing_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 {
   GstSigning *signing = GST_SIGNING(object);
 
@@ -95,10 +95,7 @@ gst_signed_video_get_property(GObject *object, guint prop_id, GValue *value, GPa
 }
 
 static void
-gst_signed_video_set_property(GObject *object,
-    guint prop_id,
-    const GValue *value,
-    GParamSpec *pspec)
+gst_signing_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
 {
   GstSigning *signing = GST_SIGNING(object);
   GstSigningPrivate *priv = signing->priv;
@@ -141,12 +138,12 @@ gst_signing_class_init(GstSigningClass *klass)
 
   gobject_class->finalize = gst_signing_finalize;
 
-  gobject_class->get_property = gst_signed_video_get_property;
-  gobject_class->set_property = gst_signed_video_set_property;
+  gobject_class->get_property = gst_signing_get_property;
+  gobject_class->set_property = gst_signing_set_property;
 
   // install properties
   g_object_class_install_property(gobject_class, PROP_RECURRENCE,
-      g_param_spec_int("recurrence", "Default recurrence", "Recurrence in frames", 0, INT_MAX,
+      g_param_spec_int("recurrence", "Recurrence", "Recurrence in frames", 0, INT_MAX,
           DEFAULT_RECURRENCE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 

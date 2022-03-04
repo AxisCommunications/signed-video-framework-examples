@@ -102,14 +102,14 @@ main(gint argc, gchar *argv[])
       "Usage:\n%s [-h] [-c codec] filename\n\n"
       "Optional\n"
       "  -c codec  : 'h264' (default) or 'h265'\n"
-      "  -r recurrence  : '1' (default) or (1-2147483647)\n"
+      "  -r recurrence  : '0' (default) or (1-2147483647)\n"
       "Required\n"
       "  filename  : Name of the file to be signed.\n",
       argv[0]);
 
   GError *error = NULL;
   gchar *codec_str = "h264";
-  gchar *recurrence_str = "1";
+  gint recurrence = 0;
   gchar *filename = NULL;
   gchar *outfilename = NULL;
 
@@ -141,7 +141,7 @@ main(gint argc, gchar *argv[])
       codec_str = argv[arg];
     } else if (strcmp(argv[arg], "-r") == 0) {
       arg++;
-      recurrence_str = argv[arg];
+      recurrence = atoi(argv[arg]);
     } else if (strncmp(argv[arg], "-", 1) == 0) {
       // Unknown option.
       g_message("Unknown option: %s\n%s", argv[arg], usage);
@@ -214,9 +214,10 @@ main(gint argc, gchar *argv[])
     goto out;
   }
 
-  // Convert recurrence string to int and set property
-  gint recurrence_int = atoi(recurrence_str);
-  g_object_set(G_OBJECT(signedvideo), "recurrence", recurrence_int, NULL);
+  // Set property recurrence
+  if (recurrence > 0) {
+    g_object_set(G_OBJECT(signedvideo), "recurrence", recurrence, NULL);
+  }
 
   // Set file names locations of src and sink.
   g_object_set(G_OBJECT(filesrc), "location", filename, NULL);
