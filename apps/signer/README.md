@@ -42,7 +42,7 @@ meson install -C build_apps
 The executable is now located at `./my_installs/bin/signer.exe`
 
 ## Running
-Sign an MP4 file of an H264 video with recurrence 100 frames using the app. See function signed_video_set_recurrence_interval_frames in [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework) for more details about recurrence.
+Sign an MP4 file of an H264 video with recurrence 100 frames using the app. See function signed_video_set_recurrence_interval_frames() in [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework) for more details about recurrence.
 ```
 ./path/to/your/installed/signer.exe -c h264 -r 100 test_h264.mp4
 ```

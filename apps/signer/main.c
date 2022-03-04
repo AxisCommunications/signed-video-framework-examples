@@ -99,10 +99,10 @@ main(gint argc, gchar *argv[])
   int status = 1;
 
   gchar *usage = g_strdup_printf(
-      "Usage:\n%s [-h] [-c codec] filename\n\n"
+      "Usage:\n%s [-h] [-c codec] [-r recurrence] filename\n\n"
       "Optional\n"
       "  -c codec  : 'h264' (default) or 'h265'\n"
-      "  -r recurrence  : '0' (default) or (1-2147483647)\n"
+      "  -r recurrence  : 1-2147483647\n"
       "Required\n"
       "  filename  : Name of the file to be signed.\n",
       argv[0]);
