@@ -51,8 +51,3 @@ With the example Linux commands above testing `signed_test_h264.mp4` in [test-fi
 
 There are both signed and unsigned test files in [test-files/](../../test-files/) for both H264 and
 H265.
-
-Note: There is currently a known flaw in
-[signed_test_h265.mp4](../../test-files/signed_test_h265.mp4) where the timestamps of the first NALs
-are not set correctly. This affects the validation of the first GOP, which is displayed as *signed*,
-hence, a signature has so far been detected but there is no signature for the first GOP.
