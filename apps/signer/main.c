@@ -42,7 +42,7 @@
 
 /* Callback to get and read messages on the bus. */
 static gboolean
-bus_call(GstBus __attribute__((unused)) *bus, GstMessage *msg, gpointer data)
+bus_call(GstBus __attribute__((unused)) * bus, GstMessage *msg, gpointer data)
 {
   GMainLoop *loop = data;
 
@@ -84,7 +84,7 @@ bus_call(GstBus __attribute__((unused)) *bus, GstMessage *msg, gpointer data)
 
 /* Callback to link |element| and |data| (sink_element). */
 static void
-pad_added_cb(GstElement __attribute__((unused)) *element, GstPad *pad, gpointer data)
+pad_added_cb(GstElement __attribute__((unused)) * element, GstPad *pad, gpointer data)
 {
   GstElement *sink_element = data;
   GstPad *sinkpad = gst_element_get_static_pad(sink_element, "sink");
@@ -99,15 +99,17 @@ main(gint argc, gchar *argv[])
   int status = 1;
 
   gchar *usage = g_strdup_printf(
-      "Usage:\n%s [-h] [-c codec] filename\n\n"
+      "Usage:\n%s [-h] [-c codec] [-r recurrence] filename\n\n"
       "Optional\n"
-      "  -c codec  : 'h264' (default) or 'h265'\n"
+      "  -c codec       : 'h264' (default) or 'h265'\n"
+      "  -r recurrence  : 1-2147483647\n"
       "Required\n"
-      "  filename  : Name of the file to be signed.\n",
+      "  filename       : Name of the file to be signed.\n",
       argv[0]);
 
   GError *error = NULL;
   gchar *codec_str = "h264";
+  gint recurrence = 0;
   gchar *filename = NULL;
   gchar *outfilename = NULL;
 
@@ -137,6 +139,9 @@ main(gint argc, gchar *argv[])
     } else if (strcmp(argv[arg], "-c") == 0) {
       arg++;
       codec_str = argv[arg];
+    } else if (strcmp(argv[arg], "-r") == 0) {
+      arg++;
+      recurrence = atoi(argv[arg]);
     } else if (strncmp(argv[arg], "-", 1) == 0) {
       // Unknown option.
       g_message("Unknown option: %s\n%s", argv[arg], usage);
@@ -207,6 +212,11 @@ main(gint argc, gchar *argv[])
         "GST_PLUGIN_PATH, and that gst-inspect-1.0 lists it. If it does not, check with "
         "'GST_DEBUG=*:2 gst-inspect-1.0' for the reason why it is not being loaded.");
     goto out;
+  }
+
+  // Set property recurrence
+  if (recurrence > 0) {
+    g_object_set(G_OBJECT(signedvideo), "recurrence", recurrence, NULL);
   }
 
   // Set file names locations of src and sink.
