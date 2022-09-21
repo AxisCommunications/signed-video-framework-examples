@@ -23,8 +23,8 @@
  * This application validates the authenticity of a video from a file. The result is written on
  * screen and in addition, a summary is written to the file validation_results.txt.
  *
- * Supported video codecs are H26x and the recording should be an .mp4 file. Other formats may also
- * work, but have not been tested.
+ * Supported video codecs are H26x and the recording should be either an .mp4, or a .mkv file. Other
+ * formats may also work, but have not been tested.
  *
  * Example to validate the authenticity of an h264 video stored in file.mp4
  *   $ ./validator.exe -c h264 /path/to/file.mp4
@@ -329,6 +329,7 @@ main(int argc, char **argv)
 
   int arg = 1;
   gchar *codec_str = "h264";
+  gchar *demux_str = "qtdemux";
   gchar *filename = NULL;
   gchar *pipeline = NULL;
   gchar *usage = g_strdup_printf(
@@ -373,6 +374,11 @@ main(int argc, char **argv)
   g_free(usage);
   usage = NULL;
 
+  // Determine if file is a Matroska container (.mkv)
+  if (strstr(filename, ".mkv")) {
+    demux_str = "matroskademux";
+  }
+
   // Set codec.
   if (strcmp(codec_str, "h264") == 0 || strcmp(codec_str, "h265") == 0) {
     codec = (strcmp(codec_str, "h264") == 0) ? SV_CODEC_H264 : SV_CODEC_H265;
@@ -383,10 +389,10 @@ main(int argc, char **argv)
 
   if (g_file_test(filename, G_FILE_TEST_EXISTS)) {
     pipeline = g_strdup_printf(
-        "filesrc location=\"%s\" ! qtdemux ! %sparse ! "
+        "filesrc location=\"%s\" ! %s ! %sparse ! "
         "video/x-%s,stream-format=byte-stream,alignment=(string)nal ! appsink "
         "name=validatorsink",
-        filename, codec_str, codec_str);
+        filename, demux_str, codec_str, codec_str);
   } else {
     g_warning("file '%s' does not exist", filename);
     goto out;

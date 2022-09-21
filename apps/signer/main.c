@@ -108,6 +108,8 @@ main(gint argc, gchar *argv[])
 
   GError *error = NULL;
   gchar *codec_str = "h264";
+  gchar *demux_str = "qtdemux";
+  gchar *mux_str = "mp4mux";
   gchar *filename = NULL;
   gchar *outfilename = NULL;
 
@@ -164,6 +166,12 @@ main(gint argc, gchar *argv[])
   g_free(usage);
   usage = NULL;
 
+  // Determine if file is a Matroska container (.mkv)
+  if (strstr(filename, ".mkv")) {
+    demux_str = "matroskademux";
+    mux_str = "matroskamux";
+  }
+
   // Create a main loop to run the application in.
   loop = g_main_loop_new(NULL, FALSE);
   if (!loop) {
@@ -185,14 +193,14 @@ main(gint argc, gchar *argv[])
 
   // Create elements and populate the pipeline.
   filesrc = gst_element_factory_make("filesrc", NULL);
-  demuxer = gst_element_factory_make("qtdemux", NULL);
+  demuxer = gst_element_factory_make(demux_str, NULL);
   if (strcmp(codec_str, "h264") == 0) {
     parser = gst_element_factory_make("h264parse", NULL);
   } else {
     parser = gst_element_factory_make("h265parse", NULL);
   }
   signedvideo = gst_element_factory_make("signing", NULL);
-  muxer = gst_element_factory_make("mp4mux", NULL);
+  muxer = gst_element_factory_make(mux_str, NULL);
   filesink = gst_element_factory_make("filesink", NULL);
 
   if (!filesrc || !demuxer || !parser || !muxer || !filesink) {
