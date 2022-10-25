@@ -35,11 +35,13 @@
 #include <gst/gst.h>
 #include <stdio.h>  // FILE, fopen, fclose
 #include <string.h>  // strcpy, strcat, strcmp, strlen
+#include <time.h>  // time_t, struct tm, strftime, gmtime
 
 #include <signed-video-framework/signed_video_auth.h>
 #include <signed-video-framework/signed_video_common.h>
 
 #define RESULTS_FILE "validation_results.txt"
+#define VALIDATOR_VERSION "v1.0.1"  // Increment when a change is affecting the code.
 
 typedef struct {
   GMainLoop *loop;
@@ -252,8 +254,22 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
   FILE *f = NULL;
   char *this_version = data->this_version;
   char *signing_version = data->version_on_signing_side;
+  char first_ts_str[80] = {'\0'};
+  char last_ts_str[80] = {'\0'};
+  bool has_timestamp = false;
   switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_EOS:
+      data->auth_report = signed_video_get_authenticity_report(data->sv);
+      if (data->auth_report && data->auth_report->accumulated_validation.has_timestamp) {
+        time_t first_sec = data->auth_report->accumulated_validation.first_timestamp / 1000000;
+        struct tm first_ts = *gmtime(&first_sec);
+        strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
+        time_t last_sec = data->auth_report->accumulated_validation.last_timestamp / 1000000;
+        struct tm last_ts = *gmtime(&last_sec);
+        strftime(last_ts_str, sizeof(last_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &last_ts);
+        has_timestamp = true;
+      }
+      signed_video_authenticity_report_free(data->auth_report);
       g_debug("received EOS");
       f = fopen(RESULTS_FILE, "w");
       if (!f) {
@@ -287,10 +303,17 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         fprintf(f, "NOT PRESENT!\n");
       }
       fprintf(f, "----------------------------\n");
-      fprintf(f, "\nSigned Video versions\n");
+      fprintf(f, "\nSigned Video timestamps\n");
       fprintf(f, "----------------------------\n");
-      fprintf(f, "Validator:    %s\n", this_version ? this_version : "N/A");
-      fprintf(f, "Signing side: %s\n", signing_version ? signing_version : "N/A");
+      fprintf(f, "First: %s\n", has_timestamp ? first_ts_str : "N/A");
+      fprintf(f, "Last:  %s\n", has_timestamp ? last_ts_str : "N/A");
+      fprintf(f, "----------------------------\n");
+      fprintf(f, "\nVersions of signed-video-framework\n");
+      fprintf(f, "----------------------------\n");
+      fprintf(f, "Validator runs: %s\n", this_version ? this_version : "N/A");
+      fprintf(f, "Camera runs:    %s\n", signing_version ? signing_version : "N/A");
+      fprintf(f, "----------------------------\n");
+      fprintf(f, "Version of this validator app: %s\n", VALIDATOR_VERSION);
       fprintf(f, "----------------------------\n");
       fclose(f);
       g_message("Validation performed with Signed Video version %s", this_version);
