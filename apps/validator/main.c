@@ -41,7 +41,8 @@
 #include <signed-video-framework/signed_video_common.h>
 
 #define RESULTS_FILE "validation_results.txt"
-#define VALIDATOR_VERSION "v1.0.1"  // Increment when a change is affecting the code.
+// Increment VALIDATOR_VERSION when a change is affecting the code.
+#define VALIDATOR_VERSION "v1.0.1"  // Requires at least signed-video-framework v1.1.14
 
 typedef struct {
   GMainLoop *loop;
