@@ -227,6 +227,9 @@ gst_signing_transform_ip(GstBaseTransform *trans, GstBuffer *buf)
   gint prepend_count = 0;
 
   priv->last_pts = GST_BUFFER_PTS(buf);
+  // last_pts is an GstClockTime object, which is measured in nanoseconds.
+  const gint64 timestamp_usec = (const gint64)(priv->last_pts / 1000);
+  const gint64 *timestamp_usec_ptr = priv->last_pts == GST_CLOCK_TIME_NONE ? NULL : &timestamp_usec;
 
   GST_DEBUG_OBJECT(signing, "got buffer with %d memories", gst_buffer_n_memory(buf));
   while (idx < gst_buffer_n_memory(buf)) {
@@ -243,8 +246,8 @@ gst_signing_transform_ip(GstBaseTransform *trans, GstBuffer *buf)
     // both. Therefore, since the start code in the pipeline temporarily may have been replaced by
     // the picture data size this format is violated. To pass in valid input data, skip the first
     // four bytes.
-    sv_rc = signed_video_add_nalu_for_signing(
-        signing->priv->signed_video, &(map_info.data[4]), map_info.size - 4);
+    sv_rc = signed_video_add_nalu_for_signing_with_timestamp(
+        signing->priv->signed_video, &(map_info.data[4]), map_info.size - 4, timestamp_usec_ptr);
     if (sv_rc != SV_OK) {
       GST_ELEMENT_ERROR(
           signing, STREAM, FAILED, ("failed to add nalu for signing, error %d", sv_rc), (NULL));
