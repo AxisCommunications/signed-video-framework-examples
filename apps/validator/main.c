@@ -48,6 +48,7 @@ typedef struct {
   GMainLoop *loop;
   GstElement *source;
   GstElement *sink;
+  GstClockTime first_pts;
 
   signed_video_t *sv;
   signed_video_authenticity_t *auth_report;
@@ -151,6 +152,11 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
 
   buffer = gst_sample_get_buffer(sample);
 
+  // Get timestamp of first frame
+  if (data->first_pts == GST_CLOCK_TIME_NONE) {
+    data->first_pts = GST_BUFFER_PTS(buffer);
+  }
+
   if ((buffer == NULL) || (gst_buffer_n_memory(buffer) == 0)) {
     g_debug("no buffer, or no memories in buffer");
     gst_sample_unref(sample);
@@ -172,8 +178,7 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
     status = signed_video_add_nalu_and_authenticate(
         data->sv, info.data + 4, info.size - 4, &(data->auth_report));
     if (status != SV_OK) {
-      g_message("error during verification of signed video");
-      g_debug("error during verification of signed video");
+      g_error("error during verification of signed video");
       post_validation_result_message(sink, bus, VALIDATION_ERROR);
     } else if (data->auth_report) {
       gsize str_size = VALIDATION_STR_SIZE;
@@ -260,11 +265,17 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
   bool has_timestamp = false;
   switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_EOS:
-      data->auth_report = signed_video_get_authenticity_report(data->sv);
-      if (data->auth_report && data->auth_report->accumulated_validation.has_timestamp) {
-        time_t first_sec = data->auth_report->accumulated_validation.first_timestamp / 1000000;
+      if (data->first_pts != GST_CLOCK_TIME_NONE) {
+        // first_pts is an GstClockTime object, which is measured in nanoseconds.
+        time_t first_sec = data->first_pts / 1000000000;
         struct tm first_ts = *gmtime(&first_sec);
         strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
+      }
+      data->auth_report = signed_video_get_authenticity_report(data->sv);
+      if (data->auth_report && data->auth_report->accumulated_validation.has_timestamp) {
+        // time_t first_sec = data->auth_report->accumulated_validation.first_timestamp / 1000000;
+        // struct tm first_ts = *gmtime(&first_sec);
+        // strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
         time_t last_sec = data->auth_report->accumulated_validation.last_timestamp / 1000000;
         struct tm last_ts = *gmtime(&last_sec);
         strftime(last_ts_str, sizeof(last_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &last_ts);
@@ -306,15 +317,13 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       fprintf(f, "----------------------------\n");
       fprintf(f, "\nSigned Video timestamps\n");
       fprintf(f, "----------------------------\n");
-      fprintf(f, "First: %s\n", has_timestamp ? first_ts_str : "N/A");
-      fprintf(f, "Last:  %s\n", has_timestamp ? last_ts_str : "N/A");
+      fprintf(f, "First frame:           %s\n", data->first_pts != GST_CLOCK_TIME_NONE ? first_ts_str : "N/A");
+      fprintf(f, "Last validated frame:  %s\n", has_timestamp ? last_ts_str : "N/A");
       fprintf(f, "----------------------------\n");
       fprintf(f, "\nVersions of signed-video-framework\n");
       fprintf(f, "----------------------------\n");
-      fprintf(f, "Validator runs: %s\n", this_version ? this_version : "N/A");
-      fprintf(f, "Camera runs:    %s\n", signing_version ? signing_version : "N/A");
-      fprintf(f, "----------------------------\n");
-      fprintf(f, "Version of this validator app: %s\n", VALIDATOR_VERSION);
+      fprintf(f, "Validator (%s) runs: %s\n", VALIDATOR_VERSION, this_version ? this_version : "N/A");
+      fprintf(f, "Camera runs:            %s\n", signing_version ? signing_version : "N/A");
       fprintf(f, "----------------------------\n");
       fclose(f);
       g_message("Validation performed with Signed Video version %s", this_version);
@@ -431,6 +440,7 @@ main(int argc, char **argv)
   data->sv = signed_video_create(codec);
   data->loop = g_main_loop_new(NULL, FALSE);
   data->source = gst_parse_launch(pipeline, NULL);
+  data->first_pts = GST_CLOCK_TIME_NONE;
   g_free(pipeline);
   pipeline = NULL;
 
