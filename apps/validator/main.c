@@ -154,7 +154,7 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
 
   // Get timestamp of first frame
   if (data->first_pts == GST_CLOCK_TIME_NONE) {
-    data->first_pts = GST_BUFFER_PTS(buf);
+    data->first_pts = GST_BUFFER_PTS(buffer);
   }
 
   if ((buffer == NULL) || (gst_buffer_n_memory(buffer) == 0)) {
