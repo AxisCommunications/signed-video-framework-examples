@@ -267,7 +267,7 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
     case GST_MESSAGE_EOS:
       if (data->first_pts != GST_CLOCK_TIME_NONE) {
         // first_pts is an GstClockTime object, which is measured in nanoseconds.
-        time_t first_sec = data->first_pt / 1000000000;
+        time_t first_sec = data->first_pts / 1000000000;
         struct tm first_ts = *gmtime(&first_sec);
         strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
       }
