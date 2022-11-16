@@ -42,7 +42,7 @@
 
 #define RESULTS_FILE "validation_results.txt"
 // Increment VALIDATOR_VERSION when a change is affecting the code.
-#define VALIDATOR_VERSION "v1.0.1"  // Requires at least signed-video-framework v1.1.14
+#define VALIDATOR_VERSION "v1.0.2"  // Requires at least signed-video-framework v1.1.14
 
 typedef struct {
   GMainLoop *loop;
