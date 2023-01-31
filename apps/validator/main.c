@@ -54,6 +54,7 @@ typedef struct {
   signed_video_product_info_t *product_info;
   char *version_on_signing_side;
   char *this_version;
+  bool no_container;
 
   gint valid_gops;
   gint invalid_gops;
@@ -167,10 +168,15 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       return GST_FLOW_ERROR;
     }
 
-    // Pass nalu to the signed video session, excluding 4 bytes start code, since it might be
-    // replaced by the size of buffer.
-    status = signed_video_add_nalu_and_authenticate(
-        data->sv, info.data + 4, info.size - 4, &(data->auth_report));
+    if (data->no_container) {
+      status = signed_video_add_nalu_and_authenticate(
+          data->sv, info.data, info.size, &(data->auth_report));
+    } else {
+      // Pass nalu to the signed video session, excluding 4 bytes start code, since it might have
+      // been replaced by the size of buffer.
+      status = signed_video_add_nalu_and_authenticate(
+          data->sv, info.data + 4, info.size - 4, &(data->auth_report));
+    }
     if (status != SV_OK) {
       g_error("error during verification of signed video");
       post_validation_result_message(sink, bus, VALIDATION_ERROR);
@@ -278,6 +284,18 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         return FALSE;
       }
       fprintf(f, "----------------------------\n");
+      if (data->auth_report) {
+        SignedVideoPublicKeyValidation public_key_validation =
+            data->auth_report->accumulated_validation.public_key_validation;
+        if (public_key_validation == SV_PUBKEY_VALIDATION_OK) {
+          fprintf(f, "PUBLIC KEY IS VALID!\n");
+        } else if (public_key_validation == SV_PUBKEY_VALIDATION_NOT_OK) {
+          fprintf(f, "PUBLIC KEY IS NOT VALID!\n");
+        }
+      } else {
+        fprintf(f, "PUBLIC KEY COULD NOT BE VALIDATED!\n");
+      }
+      fprintf(f, "----------------------------\n");
       if (data->invalid_gops > 0) {
         fprintf(f, "VIDEO IS INVALID!\n");
       } else if (data->no_sign_gops > 0) {
@@ -311,7 +329,7 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       fprintf(f, "\nVersions of signed-video-framework\n");
       fprintf(f, "----------------------------\n");
       fprintf(f, "Validator (%s) runs: %s\n", VALIDATOR_VERSION, this_version ? this_version : "N/A");
-      fprintf(f, "Camera runs:            %s\n", signing_version ? signing_version : "N/A");
+      fprintf(f, "Camera runs:             %s\n", signing_version ? signing_version : "N/A");
       fprintf(f, "----------------------------\n");
       fclose(f);
       g_message("Validation performed with Signed Video version %s", this_version);
@@ -350,7 +368,7 @@ main(int argc, char **argv)
 
   int arg = 1;
   gchar *codec_str = "h264";
-  gchar *demux_str = "qtdemux";
+  gchar *demux_str = "";  // No container by default
   gchar *filename = NULL;
   gchar *pipeline = NULL;
   gchar *usage = g_strdup_printf(
@@ -395,9 +413,13 @@ main(int argc, char **argv)
   g_free(usage);
   usage = NULL;
 
-  // Determine if file is a Matroska container (.mkv)
+  // Determine if file is a container
   if (strstr(filename, ".mkv")) {
-    demux_str = "matroskademux";
+    // Matroska container (.mkv)
+    demux_str = "! matroskademux";
+  } else if (strstr(filename, ".mp4")) {
+    // MP4 container (.mp4)
+    demux_str = "! qtdemux";
   }
 
   // Set codec.
@@ -410,7 +432,7 @@ main(int argc, char **argv)
 
   if (g_file_test(filename, G_FILE_TEST_EXISTS)) {
     pipeline = g_strdup_printf(
-        "filesrc location=\"%s\" ! %s ! %sparse ! "
+        "filesrc location=\"%s\" %s ! %sparse ! "
         "video/x-%s,stream-format=byte-stream,alignment=(string)nal ! appsink "
         "name=validatorsink",
         filename, demux_str, codec_str, codec_str);
@@ -428,6 +450,7 @@ main(int argc, char **argv)
   data->sv = signed_video_create(codec);
   data->loop = g_main_loop_new(NULL, FALSE);
   data->source = gst_parse_launch(pipeline, NULL);
+  if (strlen(demux_str) == 0) data->no_container = true;
   g_free(pipeline);
   pipeline = NULL;
 
