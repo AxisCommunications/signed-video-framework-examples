@@ -452,7 +452,7 @@ main(int argc, char **argv)
   data->sv = signed_video_create(codec);
   data->loop = g_main_loop_new(NULL, FALSE);
   data->source = gst_parse_launch(pipeline, NULL);
-  if (strlen(demux_str) == 0) data->no_container = true;
+  data->no_container = (strlen(demux_str) == 0);
   g_free(pipeline);
   pipeline = NULL;
 
