@@ -204,28 +204,12 @@ main(gint argc, gchar *argv[])
   filesink = gst_element_factory_make("filesink", NULL);
 
   if (!filesrc || !demuxer || !parser || !muxer || !filesink) {
-    g_message(
-        "One or more standard elements in pipeline could not be found - check "
-        "your install.");
-    if (!filesrc) {
-      g_message("gStreamer element 'filesrc' not found");
-    }
-    if (!demuxer) {
-      g_message("gStreamer element '%s' not found", demux_str);
-    }
-    if (!parser) {
-      if (strcmp(codec_str, "h264") == 0) {
-        g_message("gStreamer element 'h264parse' not found");
-      } else {
-        g_message("gStreamer element 'h265parse' not found");
-      }
-    }
-    if (!muxer) {
-      g_message("gStreamer element '%s' not found", mux_str);
-    }
-    if (!filesink) {
-      g_message("gStreamer element 'filesink' not found");
-    }
+    if (!filesrc) g_message("gStreamer element 'filesrc' not found");
+    if (!demuxer) g_message("gStreamer element '%s' not found", demux_str);
+    if (!parser) g_message("gStreamer element '%sparse' not found", codec_str);
+    if (!muxer) g_message("gStreamer element '%s' not found", mux_str);
+    if (!filesink) g_message("gStreamer element 'filesink' not found");
+
     goto out;
   } else if (!signedvideo) {
     g_message(
