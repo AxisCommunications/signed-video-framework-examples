@@ -7,7 +7,7 @@ validator_sources = files(
   'main.c'
 )
 
-executable('validator.exe',
+executable('validator',
   validator_sources,
   build_rpath : sv_lib_dir,
   install_rpath : sv_lib_dir,
