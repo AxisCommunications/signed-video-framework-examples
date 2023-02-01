@@ -32,21 +32,21 @@ Build and install the library locally in `./my_installs/`.
 meson --prefix $PWD/my_installs signed-video-framework build_lib
 meson install -C build_lib
 ```
-Then build and install the `validator.exe` in the same place
+Then build and install the `validator` in the same place
 ```
 meson --prefix $PWD/my_installs -Dvalidator=true signed-video-framework-examples build_apps
 meson install -C build_apps
 ```
-The executable is now located at `./my_installs/bin/validator.exe`
+The executable is now located at `./my_installs/bin/validator`
 
 ## Running
 Validate an MP4 file of an H264 video using the app
 ```
-./path/to/your/installed/validator.exe -c h264 signed_test_h264.mp4
+./path/to/your/installed/validator -c h264 signed_test_h264.mp4
 ```
 With the example Linux commands above testing `signed_test_h264.mp4` in [test-files/](../../test-files/)
 ```
-./my_installs/bin/validator.exe -c h264 signed-video-framework-examples/test-files/signed_test_h264.mp4
+./my_installs/bin/validator -c h264 signed-video-framework-examples/test-files/signed_test_h264.mp4
 ```
 
 There are both signed and unsigned test files in [test-files/](../../test-files/) for both H264 and

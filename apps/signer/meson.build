@@ -5,7 +5,7 @@ signer_sources = [
 
 subdir('gst-plugin')
 
-executable('signer.exe',
+executable('signer',
   signer_sources,
   dependencies : [ gst_dep ],
   install : true,

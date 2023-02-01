@@ -42,19 +42,19 @@
 
 #define RESULTS_FILE "validation_results.txt"
 // Increment VALIDATOR_VERSION when a change is affecting the code.
-#define VALIDATOR_VERSION "v1.0.2"  // Requires at least signed-video-framework v1.1.14
+#define VALIDATOR_VERSION "v1.0.3"  // Requires at least signed-video-framework v1.1.14
 
 typedef struct {
   GMainLoop *loop;
   GstElement *source;
   GstElement *sink;
-  GstClockTime first_pts;
 
   signed_video_t *sv;
   signed_video_authenticity_t *auth_report;
   signed_video_product_info_t *product_info;
   char *version_on_signing_side;
   char *this_version;
+  bool no_container;
 
   gint valid_gops;
   gint invalid_gops;
@@ -152,11 +152,6 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
 
   buffer = gst_sample_get_buffer(sample);
 
-  // Get timestamp of first frame
-  if (data->first_pts == GST_CLOCK_TIME_NONE) {
-    data->first_pts = GST_BUFFER_PTS(buffer);
-  }
-
   if ((buffer == NULL) || (gst_buffer_n_memory(buffer) == 0)) {
     g_debug("no buffer, or no memories in buffer");
     gst_sample_unref(sample);
@@ -173,10 +168,15 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       return GST_FLOW_ERROR;
     }
 
-    // Pass nalu to the signed video session, excluding 4 bytes start code, since it might be
-    // replaced by the size of buffer.
-    status = signed_video_add_nalu_and_authenticate(
-        data->sv, info.data + 4, info.size - 4, &(data->auth_report));
+    if (data->no_container) {
+      status = signed_video_add_nalu_and_authenticate(
+          data->sv, info.data, info.size, &(data->auth_report));
+    } else {
+      // Pass nalu to the signed video session, excluding 4 bytes start code, since it might have
+      // been replaced by the size of buffer.
+      status = signed_video_add_nalu_and_authenticate(
+          data->sv, info.data + 4, info.size - 4, &(data->auth_report));
+    }
     if (status != SV_OK) {
       g_error("error during verification of signed video");
       post_validation_result_message(sink, bus, VALIDATION_ERROR);
@@ -265,17 +265,11 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
   bool has_timestamp = false;
   switch (GST_MESSAGE_TYPE(message)) {
     case GST_MESSAGE_EOS:
-      if (data->first_pts != GST_CLOCK_TIME_NONE) {
-        // first_pts is an GstClockTime object, which is measured in nanoseconds.
-        time_t first_sec = data->first_pts / 1000000000;
-        struct tm first_ts = *gmtime(&first_sec);
-        strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
-      }
       data->auth_report = signed_video_get_authenticity_report(data->sv);
       if (data->auth_report && data->auth_report->accumulated_validation.has_timestamp) {
-        // time_t first_sec = data->auth_report->accumulated_validation.first_timestamp / 1000000;
-        // struct tm first_ts = *gmtime(&first_sec);
-        // strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
+        time_t first_sec = data->auth_report->accumulated_validation.first_timestamp / 1000000;
+        struct tm first_ts = *gmtime(&first_sec);
+        strftime(first_ts_str, sizeof(first_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &first_ts);
         time_t last_sec = data->auth_report->accumulated_validation.last_timestamp / 1000000;
         struct tm last_ts = *gmtime(&last_sec);
         strftime(last_ts_str, sizeof(last_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &last_ts);
@@ -288,6 +282,20 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         g_warning("Could not open %s for writing", RESULTS_FILE);
         g_main_loop_quit(data->loop);
         return FALSE;
+      }
+      fprintf(f, "----------------------------\n");
+      if (data->auth_report) {
+        SignedVideoPublicKeyValidation public_key_validation =
+            data->auth_report->accumulated_validation.public_key_validation;
+        if (public_key_validation == SV_PUBKEY_VALIDATION_OK) {
+          fprintf(f, "PUBLIC KEY IS VALID!\n");
+        } else if (public_key_validation == SV_PUBKEY_VALIDATION_NOT_OK) {
+          fprintf(f, "PUBLIC KEY IS NOT VALID!\n");
+        } else {
+          fprintf(f, "PUBLIC KEY COULD NOT BE VALIDATED!\n");
+        }
+      } else {
+        fprintf(f, "PUBLIC KEY COULD NOT BE VALIDATED!\n");
       }
       fprintf(f, "----------------------------\n");
       if (data->invalid_gops > 0) {
@@ -317,13 +325,13 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       fprintf(f, "----------------------------\n");
       fprintf(f, "\nSigned Video timestamps\n");
       fprintf(f, "----------------------------\n");
-      fprintf(f, "First frame:           %s\n", data->first_pts != GST_CLOCK_TIME_NONE ? first_ts_str : "N/A");
+      fprintf(f, "First frame:           %s\n", has_timestamp ? first_ts_str : "N/A");
       fprintf(f, "Last validated frame:  %s\n", has_timestamp ? last_ts_str : "N/A");
       fprintf(f, "----------------------------\n");
       fprintf(f, "\nVersions of signed-video-framework\n");
       fprintf(f, "----------------------------\n");
       fprintf(f, "Validator (%s) runs: %s\n", VALIDATOR_VERSION, this_version ? this_version : "N/A");
-      fprintf(f, "Camera runs:            %s\n", signing_version ? signing_version : "N/A");
+      fprintf(f, "Camera runs:             %s\n", signing_version ? signing_version : "N/A");
       fprintf(f, "----------------------------\n");
       fclose(f);
       g_message("Validation performed with Signed Video version %s", this_version);
@@ -362,7 +370,7 @@ main(int argc, char **argv)
 
   int arg = 1;
   gchar *codec_str = "h264";
-  gchar *demux_str = "qtdemux";
+  gchar *demux_str = "";  // No container by default
   gchar *filename = NULL;
   gchar *pipeline = NULL;
   gchar *usage = g_strdup_printf(
@@ -407,9 +415,13 @@ main(int argc, char **argv)
   g_free(usage);
   usage = NULL;
 
-  // Determine if file is a Matroska container (.mkv)
+  // Determine if file is a container
   if (strstr(filename, ".mkv")) {
-    demux_str = "matroskademux";
+    // Matroska container (.mkv)
+    demux_str = "! matroskademux";
+  } else if (strstr(filename, ".mp4")) {
+    // MP4 container (.mp4)
+    demux_str = "! qtdemux";
   }
 
   // Set codec.
@@ -422,7 +434,7 @@ main(int argc, char **argv)
 
   if (g_file_test(filename, G_FILE_TEST_EXISTS)) {
     pipeline = g_strdup_printf(
-        "filesrc location=\"%s\" ! %s ! %sparse ! "
+        "filesrc location=\"%s\" %s ! %sparse ! "
         "video/x-%s,stream-format=byte-stream,alignment=(string)nal ! appsink "
         "name=validatorsink",
         filename, demux_str, codec_str, codec_str);
@@ -440,7 +452,7 @@ main(int argc, char **argv)
   data->sv = signed_video_create(codec);
   data->loop = g_main_loop_new(NULL, FALSE);
   data->source = gst_parse_launch(pipeline, NULL);
-  data->first_pts = GST_CLOCK_TIME_NONE;
+  if (strlen(demux_str) == 0) data->no_container = true;
   g_free(pipeline);
   pipeline = NULL;
 

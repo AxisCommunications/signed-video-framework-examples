@@ -33,23 +33,23 @@ Build and install the library locally in `./my_installs/`.
 meson --prefix $PWD/my_installs signed-video-framework build_lib
 meson install -C build_lib
 ```
-Then build and install the `signer.exe` in the same place. Since this application is implemented as a gStreamer element set `GST_PLUGIN_PATH` for gStreamer to find it.
+Then build and install the `signer` in the same place. Since this application is implemented as a gStreamer element set `GST_PLUGIN_PATH` for gStreamer to find it.
 ```
 export GST_PLUGIN_PATH=$PWD/my_installs
 meson --prefix $PWD/my_installs -Dsigner=true signed-video-framework-examples build_apps
 meson install -C build_apps
 ```
-The executable is now located at `./my_installs/bin/signer.exe`
+The executable is now located at `./my_installs/bin/signer`
 
 ## Running
 Sign an MP4 file of an H264 video using the app
 ```
-./path/to/your/installed/signer.exe -c h264 test_h264.mp4
+./path/to/your/installed/signer -c h264 test_h264.mp4
 ```
 Note that the recording to sign must be present in the current directory, so copy it before signing. With the example Linux commands above sign `test_h264.mp4` in [test-files/](../../test-files/).
 ```
 cp signed-video-framework-examples/test-files/test_h264.mp4 .
-./my_installs/bin/signer.exe -c h264 test_h264.mp4
+./my_installs/bin/signer -c h264 test_h264.mp4
 ```
 
 There are unsigned test files in [test-files/](../../test-files/) for both H264 and H265.
