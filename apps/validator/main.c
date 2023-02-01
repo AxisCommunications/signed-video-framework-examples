@@ -42,7 +42,7 @@
 
 #define RESULTS_FILE "validation_results.txt"
 // Increment VALIDATOR_VERSION when a change is affecting the code.
-#define VALIDATOR_VERSION "v1.0.2"  // Requires at least signed-video-framework v1.1.14
+#define VALIDATOR_VERSION "v1.0.3"  // Requires at least signed-video-framework v1.1.14
 
 typedef struct {
   GMainLoop *loop;
@@ -291,6 +291,8 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
           fprintf(f, "PUBLIC KEY IS VALID!\n");
         } else if (public_key_validation == SV_PUBKEY_VALIDATION_NOT_OK) {
           fprintf(f, "PUBLIC KEY IS NOT VALID!\n");
+        } else {
+          fprintf(f, "PUBLIC KEY COULD NOT BE VALIDATED!\n");
         }
       } else {
         fprintf(f, "PUBLIC KEY COULD NOT BE VALIDATED!\n");
