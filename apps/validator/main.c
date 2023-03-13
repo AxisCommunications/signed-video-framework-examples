@@ -57,6 +57,7 @@ typedef struct {
   bool no_container;
 
   gint valid_gops;
+  gint valid_gops_with_missing;
   gint invalid_gops;
   gint no_sign_gops;
 } ValidationData;
@@ -194,9 +195,9 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
           strcpy(result, VALIDATION_INVALID);
           break;
         case SV_AUTH_RESULT_OK_WITH_MISSING_INFO:
-          data->valid_gops++;
+          data->valid_gops_with_missing++;
           g_debug("gops with missing info since last verification");
-          strcpy(result, VALIDATION_VALID);
+          strcpy(result, VALIDATION_MISSING);
           break;
         case SV_AUTH_RESULT_NOT_SIGNED:
           data->no_sign_gops++;
@@ -302,12 +303,15 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         fprintf(f, "VIDEO IS INVALID!\n");
       } else if (data->no_sign_gops > 0) {
         fprintf(f, "VIDEO IS NOT SIGNED!\n");
+      } else if (data->valid_gops_with_missing > 0) {
+        fprintf(f, "VIDEO IS VALID, BUT HAS MISSING FRAMES!\n");
       } else if (data->valid_gops > 0) {
         fprintf(f, "VIDEO IS VALID!\n");
       } else {
         fprintf(f, "NO COMPLETE GOPS FOUND!\n");
       }
       fprintf(f, "Number of valid GOPs: %d\n", data->valid_gops);
+      fprintf(f, "Number of valid GOPs with missing NALUs: %d\n", data->valid_gops_with_missing);
       fprintf(f, "Number of invalid GOPs: %d\n", data->invalid_gops);
       fprintf(f, "Number of GOPs without signature: %d\n", data->no_sign_gops);
       fprintf(f, "----------------------------\n");
@@ -447,6 +451,7 @@ main(int argc, char **argv)
   data = g_new0(ValidationData, 1);
   // Initialize data.
   data->valid_gops = 0;
+  data->valid_gops_with_missing = 0;
   data->invalid_gops = 0;
   data->no_sign_gops = 0;
   data->sv = signed_video_create(codec);
