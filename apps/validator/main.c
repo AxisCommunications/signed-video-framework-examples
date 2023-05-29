@@ -179,7 +179,7 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
           data->sv, info.data + 4, info.size - 4, &(data->auth_report));
     }
     if (status != SV_OK) {
-      g_error("error during verification of signed video");
+      g_critical("error during verification of signed video");
       post_validation_result_message(sink, bus, VALIDATION_ERROR);
     } else if (data->auth_report) {
       gsize str_size = VALIDATION_STR_SIZE;
