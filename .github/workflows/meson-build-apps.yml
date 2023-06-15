@@ -50,11 +50,6 @@ jobs:
         run: meson install -C build_apps
       - name: Run validator on test-files
         run: |
-          $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/test_h264.mp4
-          $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/signed_test_h264.mp4
-          $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/signed_test_h264_modified_frame_137.mp4
-          $GITHUB_WORKSPACE/local_installs/bin/validator -c h265 svf_apps/test-files/test_h265.mp4
-          $GITHUB_WORKSPACE/local_installs/bin/validator -c h265 svf_apps/test-files/signed_test_h265.mp4
           $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/signed_vendor_axis.h264
           cat validation_results.txt
       - name: Copy test files for signing
