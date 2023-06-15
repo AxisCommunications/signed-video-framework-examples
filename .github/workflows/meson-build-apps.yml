@@ -24,7 +24,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out signed-video-framework under $GITHUB_WORKSPACE, so the apps can access it
-      - uses: actions/checkout@fix/openssl3-issues
+      - uses: actions/checkout@181739864e3779147e6e2b1e46faf9273d6e9478
         with:
           repository: AxisCommunications/signed-video-framework
           path: svf_lib
