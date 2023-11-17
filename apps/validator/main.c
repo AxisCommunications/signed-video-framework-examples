@@ -42,7 +42,7 @@
 
 #define RESULTS_FILE "validation_results.txt"
 // Increment VALIDATOR_VERSION when a change is affecting the code.
-#define VALIDATOR_VERSION "v1.0.4"  // Requires at least signed-video-framework v1.1.14
+#define VALIDATOR_VERSION "v1.0.5"  // Requires at least signed-video-framework v1.1.22
 
 typedef struct {
   GMainLoop *loop;
@@ -65,13 +65,14 @@ typedef struct {
   gint no_sign_gops;
 } ValidationData;
 
-#define VALIDATION_VALID "valid"
-#define VALIDATION_INVALID "invalid"
-#define VALIDATION_UNSIGNED "unsigned"
-#define VALIDATION_SIGNED "signed"
-#define VALIDATION_MISSING "missing"
-#define VALIDATION_ERROR "error"
-#define VALIDATION_STR_SIZE 11  // Largest possible size including " : "
+#define STR_PREFACE_SIZE 11  // Largest possible size including " : "
+#define VALIDATION_VALID    "valid    : "
+#define VALIDATION_INVALID  "invalid  : "
+#define VALIDATION_UNSIGNED "unsigned : "
+#define VALIDATION_SIGNED   "signed   : "
+#define VALIDATION_MISSING  "missing  : "
+#define VALIDATION_ERROR    "error    : "
+#define NALU_TYPES_PREFACE  "   nalus : "
 
 #define VALIDATION_STRUCTURE_NAME "validation-result"
 #define VALIDATION_FIELD_NAME "result"
@@ -238,39 +239,47 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
           data->sv, info.data + 4, info.size - 4, &(data->auth_report));
     }
     if (status != SV_OK) {
-      g_critical("error during verification of signed video");
+      g_critical("error during verification of signed video: %d", status);
       post_validation_result_message(sink, bus, VALIDATION_ERROR);
     } else if (data->auth_report) {
-      gsize str_size = VALIDATION_STR_SIZE;
-      str_size += strlen(data->auth_report->latest_validation.validation_str) + 1;
+      gsize str_size = 1;  // starting with a new-line character to align strings
+      str_size += STR_PREFACE_SIZE;
+      str_size += strlen(data->auth_report->latest_validation.validation_str);
+      str_size += 1;  // new-line character
+      str_size += STR_PREFACE_SIZE;
+      str_size += strlen(data->auth_report->latest_validation.nalu_str);
+      str_size += 1;  // null-terminated
       gchar *result = g_malloc0(str_size);
+      strcpy(result, "\n");
+      strcat(result, NALU_TYPES_PREFACE);
+      strcat(result, data->auth_report->latest_validation.nalu_str);
+      strcat(result, "\n");
       switch (data->auth_report->latest_validation.authenticity) {
         case SV_AUTH_RESULT_OK:
           data->valid_gops++;
-          strcpy(result, VALIDATION_VALID);
+          strcat(result, VALIDATION_VALID);
           break;
         case SV_AUTH_RESULT_NOT_OK:
           data->invalid_gops++;
-          strcpy(result, VALIDATION_INVALID);
+          strcat(result, VALIDATION_INVALID);
           break;
         case SV_AUTH_RESULT_OK_WITH_MISSING_INFO:
           data->valid_gops_with_missing++;
           g_debug("gops with missing info since last verification");
-          strcpy(result, VALIDATION_MISSING);
+          strcat(result, VALIDATION_MISSING);
           break;
         case SV_AUTH_RESULT_NOT_SIGNED:
           data->no_sign_gops++;
           g_debug("gop is not signed");
-          strcpy(result, VALIDATION_UNSIGNED);
+          strcat(result, VALIDATION_UNSIGNED);
           break;
         case SV_AUTH_RESULT_SIGNATURE_PRESENT:
           g_debug("gop is signed, but not yet validated");
-          strcpy(result, VALIDATION_SIGNED);
+          strcat(result, VALIDATION_SIGNED);
           break;
         default:
           break;
       }
-      strcat(result, " : ");
       strcat(result, data->auth_report->latest_validation.validation_str);
       post_validation_result_message(sink, bus, result);
       // Allocate memory for |product_info| the first time it will be copied from the authenticity
