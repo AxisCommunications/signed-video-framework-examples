@@ -81,6 +81,14 @@ typedef struct {
 static const uint8_t kUuidSignedVideo[16] = {
     0x53, 0x69, 0x67, 0x6e, 0x65, 0x64, 0x20, 0x56, 0x69, 0x64, 0x65, 0x6f, 0x2e, 0x2e, 0x2e, 0x30};
 
+static guint8 *ongoing_obu = NULL;
+static gsize ongoing_obu_tot_size = 0;
+static gsize ongoing_obu_size = 0;
+
+/* If set to 'false', will use av1parse, whcich cannot parse OBU Metadata of type
+ * user private. */
+const bool av1_enabled = true;
+
 /* Helper function that copies a string and (re)allocates memory if necessary. */
 static gint
 reallocate_memory_and_copy_string(gchar **dst_str, const gchar *src_str)
@@ -149,43 +157,135 @@ is_signed_video_sei(const guint8 *nalu, SignedVideoCodec codec)
   int idx = 0;
   bool is_sei_user_data_unregistered = false;
 
-  // Check first (at most) 4 bytes for a start code.
-  while (nalu[idx] == 0 && idx < 4) {
-    num_zeros++;
+  if (codec == SV_CODEC_AV1) {
+    // Determine if OBU is of type metadata
+    is_sei_user_data_unregistered = ((nalu[idx] & 0x78) >> 3 == 5);
     idx++;
-  }
-  if (num_zeros == 4) {
-    // This is simply wrong.
-    return false;
-  } else if ((num_zeros == 3 || num_zeros == 2) && (nalu[idx] == 1)) {
-    // Start code present. Move to next byte.
+    if (!is_sei_user_data_unregistered) return false;
+
+    // Move past payload size
+    int shift_bits = 0;
+    int payload_size = 0;
+    // Get payload size (including uuid).
+    while (true) {
+      int byte = nalu[idx] & 0xff;
+      payload_size |= (byte & 0x7F) << shift_bits;
+      idx++;
+      if ((byte & 0x80) == 0)
+        break;
+      shift_bits += 7;
+    }
+    if (payload_size < 20) return false;
+
+    // Determine if this is an OBU Metadata of type user private (25).
+    is_sei_user_data_unregistered = (nalu[idx] == 25);
+    idx++;
+    if (!is_sei_user_data_unregistered) return false;
+
+    // Move past intermediate trailing byte
     idx++;
   } else {
-    // Start code NOT present. Assume the first 4 bytes have been replaced with size,
-    // which is common in, e.g., gStreamer.
-    idx = 4;
-  }
+    // Check first (at most) 4 bytes for a start code.
+    while (nalu[idx] == 0 && idx < 4) {
+      num_zeros++;
+      idx++;
+    }
+    if (num_zeros == 4) {
+      // This is simply wrong.
+      return false;
+    } else if ((num_zeros == 3 || num_zeros == 2) && (nalu[idx] == 1)) {
+      // Start code present. Move to next byte.
+      idx++;
+    } else {
+      // Start code NOT present. Assume the first 4 bytes have been replaced with size,
+      // which is common in, e.g., gStreamer.
+      idx = 4;
+    }
 
-  // Determine if this is a SEI of type user data unregistered.
-  if (codec == SV_CODEC_H264) {
-    // H.264: 0x06 0x05
-    is_sei_user_data_unregistered = (nalu[idx] == 6) && (nalu[idx + 1] == 5);
-    idx += 2;
-  } else if (codec == SV_CODEC_H265) {
-    // H.265: 0x4e 0x?? 0x05
-    is_sei_user_data_unregistered = ((nalu[idx] & 0x7e) >> 1 == 39) && (nalu[idx + 2] == 5);
-    idx += 3;
-  }
-  if (!is_sei_user_data_unregistered) return false;
+    // Determine if this is a SEI of type user data unregistered.
+    if (codec == SV_CODEC_H264) {
+      // H.264: 0x06 0x05
+      is_sei_user_data_unregistered = (nalu[idx] == 6) && (nalu[idx + 1] == 5);
+      idx += 2;
+    } else if (codec == SV_CODEC_H265) {
+      // H.265: 0x4e 0x?? 0x05
+      is_sei_user_data_unregistered = ((nalu[idx] & 0x7e) >> 1 == 39) && (nalu[idx + 2] == 5);
+      idx += 3;
+    }
+    if (!is_sei_user_data_unregistered) return false;
 
-  // Move past payload size
-  while (nalu[idx] == 0xff) {
+    // Move past payload size
+    while (nalu[idx] == 0xff) {
+      idx++;
+    }
     idx++;
   }
-  idx++;
 
   // Verify Signed Video UUID (16 bytes).
   return memcmp(&nalu[idx], kUuidSignedVideo, 16) == 0 ? true : false;
+}
+
+static gsize
+av1_get_next_obu(const guint8 *data)
+{
+  const guint8* next_obu = data;
+  gsize obu_size = 0;
+  next_obu++; // Move past OBU header
+
+  int shift = 0;
+  int obu_length = 0;
+  // OBU length leb128()
+  while (true) {
+    int byte = *next_obu & 0xff;
+    obu_length |= (byte & 0x7f) << shift;
+    next_obu++;
+    if ((byte & 0x80) == 0)
+      break;
+    shift += 7;
+  }
+  next_obu += obu_length;
+  obu_size = (gsize)(next_obu - data);
+
+  return obu_size;
+}
+
+static GstBuffer *
+parse_av1(const guint8 *data, gsize data_size, gsize *slack_size, bool *more_to_come)
+{
+  const guint8* next_obu = data;
+  gsize remaining_size = data_size;
+  uint memories_left = gst_buffer_get_max_memory();
+
+  GstBuffer *obu_buffer = gst_buffer_new();
+  if (!obu_buffer) return NULL;
+
+  *slack_size = 0;
+  *more_to_come = false;
+  while (remaining_size > 0 && memories_left > 0) {
+    gsize obu_size = av1_get_next_obu(next_obu);
+    if (obu_size > remaining_size) {
+      // g_warning("::::: Next OBU has size %zu B, but only %zu B remains", obu_size, remaining_size);
+      *slack_size = remaining_size;
+      remaining_size = 0;
+    } else {
+      // g_warning("::::: Adding memory of size %zu B", obu_size);
+      // GstMemory *memory = gst_allocator_alloc(NULL, obu_size, NULL);
+      gpointer *obu = g_malloc0(obu_size);
+      memcpy(obu, next_obu, obu_size);
+      GstMemory *memory = gst_memory_new_wrapped(0, obu, obu_size, 0, obu_size, obu, g_free);
+      // gst_buffer_insert_memory(current_au, idx, prepend_mem);
+      gst_buffer_append_memory(obu_buffer, memory);
+      remaining_size -= obu_size;
+      next_obu += obu_size;
+      memories_left--;
+    }
+  }
+  if (*slack_size == 0 && memories_left == 0) {
+    *more_to_come = true;
+    *slack_size = remaining_size;
+  }
+
+  return obu_buffer;
 }
 
 /* Called when the appsink notifies us that there is a new buffer ready for processing. */
@@ -196,24 +296,63 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
 
   GstAppSink *sink = GST_APP_SINK(elt);
   GstSample *sample = NULL;
+  GstBuffer *sample_buffer = NULL;
   GstBuffer *buffer = NULL;
+  GstBuffer *obu_buffer = NULL;
   GstBus *bus = NULL;
   GstMapInfo info;
   SignedVideoReturnCode status = SV_UNKNOWN_FAILURE;
+  bool run_more = false;
+
+  // g_warning("______ max number of buffers = %u", gst_buffer_get_max_memory());
 
   // Get the sample from appsink.
   sample = gst_app_sink_pull_sample(sink);
   // If sample is NULL the appsink is stopped or EOS is reached. Both are valid, hence proceed.
   if (sample == NULL) return GST_FLOW_OK;
 
-  buffer = gst_sample_get_buffer(sample);
+  sample_buffer = gst_sample_get_buffer(sample);
 
-  if ((buffer == NULL) || (gst_buffer_n_memory(buffer) == 0)) {
+  if ((sample_buffer == NULL) || (gst_buffer_n_memory(sample_buffer) == 0)) {
     g_debug("no buffer, or no memories in buffer");
     gst_sample_unref(sample);
     return GST_FLOW_ERROR;
   }
 
+  if (data->codec == SV_CODEC_AV1 && av1_enabled) {
+    // g_warning("NUM MEMORIES in buffer before parsing = %u", gst_buffer_n_memory(sample_buffer));
+    GstMemory *mem = gst_buffer_peek_memory(sample_buffer, 0);
+    if (!gst_memory_map(mem, &info, GST_MAP_READ)) {
+      g_debug("failed to map memory");
+      gst_sample_unref(sample);
+      return GST_FLOW_ERROR;
+    }
+    if (ongoing_obu_tot_size < ongoing_obu_size + info.size) {
+      guint8 *tmp = g_malloc0(ongoing_obu_size + info.size);
+      memcpy(tmp, ongoing_obu, ongoing_obu_size);
+      free(ongoing_obu);
+      ongoing_obu = tmp;
+    }
+    memcpy(ongoing_obu + ongoing_obu_size, info.data, info.size);
+    ongoing_obu_tot_size = ongoing_obu_size + info.size;
+    ongoing_obu_size += info.size;
+  }
+
+try_again:
+  if (data->codec == SV_CODEC_AV1 && av1_enabled) {
+    gsize slack_size = 0;
+    obu_buffer = parse_av1(ongoing_obu, ongoing_obu_size, &slack_size, &run_more);
+    // Store slack data
+    memcpy(ongoing_obu, ongoing_obu + ongoing_obu_size - slack_size, slack_size);
+    memset(ongoing_obu + slack_size, 0, ongoing_obu_size - slack_size);
+    ongoing_obu_size = slack_size;
+    // Use OBU Buffer
+    buffer = obu_buffer;
+  } else {
+    buffer = sample_buffer;
+  }
+
+  // g_warning("NUM MEMORIES in buffer = %u", gst_buffer_n_memory(buffer));
   bus = gst_element_get_bus(elt);
   for (guint i = 0; i < gst_buffer_n_memory(buffer); i++) {
     GstMemory *mem = gst_buffer_peek_memory(buffer, i);
@@ -224,11 +363,12 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
       return GST_FLOW_ERROR;
     }
 
+    // g_warning("SIZE OF CHUNK = %zu B", info.size);
     // Update the total video and SEI sizes.
     data->total_bytes += info.size;
     data->sei_bytes += is_signed_video_sei(info.data, data->codec) ? info.size : 0;
 
-    if (data->no_container) {
+    if (data->no_container || data->codec == SV_CODEC_AV1) {
       status = signed_video_add_nalu_and_authenticate(
           data->sv, info.data, info.size, &(data->auth_report));
     } else {
@@ -315,9 +455,17 @@ on_new_sample_from_sink(GstElement *elt, ValidationData *data)
     }
     gst_memory_unmap(mem, &info);
   }
+  if (obu_buffer) gst_buffer_unref(obu_buffer);
+  obu_buffer = NULL;
+  if (run_more) {
+    goto try_again;
+  }
 
   gst_object_unref(bus);
-  gst_sample_unref(sample);
+  if (!(data->codec == SV_CODEC_AV1 && av1_enabled)) {
+    // If data is passed in from a file the ownership is not transferred until end of file
+    gst_sample_unref(sample);
+  }
 
   return GST_FLOW_OK;
 }
@@ -454,6 +602,7 @@ main(int argc, char **argv)
   SignedVideoCodec codec = -1;
 
   int arg = 1;
+  gchar *format_str = "byte-stream,alignment=(string)nal";
   gchar *codec_str = "h264";
   gchar *demux_str = "";  // No container by default
   gchar *filename = NULL;
@@ -461,7 +610,7 @@ main(int argc, char **argv)
   gchar *usage = g_strdup_printf(
       "Usage:\n%s [-h] [-c codec] filename\n\n"
       "Optional\n"
-      "  -c codec  : 'h264' (default) or 'h265'\n"
+      "  -c codec  : 'h264' (default), 'h265' or 'av1'\n"
       "Required\n"
       "  filename  : Name of the file to be validated.\n",
       argv[0]);
@@ -512,20 +661,38 @@ main(int argc, char **argv)
   // Set codec.
   if (strcmp(codec_str, "h264") == 0 || strcmp(codec_str, "h265") == 0) {
     codec = (strcmp(codec_str, "h264") == 0) ? SV_CODEC_H264 : SV_CODEC_H265;
+  } else if (strcmp(codec_str, "av1") == 0) {
+    codec = SV_CODEC_AV1;
+    format_str = "obu-stream,alignment=(string)obu";
   } else {
     g_warning("unsupported codec format '%s'", codec_str);
     goto out;
   }
 
-  if (g_file_test(filename, G_FILE_TEST_EXISTS)) {
-    pipeline = g_strdup_printf(
-        "filesrc location=\"%s\" %s ! %sparse ! "
-        "video/x-%s,stream-format=byte-stream,alignment=(string)nal ! appsink "
-        "name=validatorsink",
-        filename, demux_str, codec_str, codec_str);
+  if (av1_enabled) {
+    if (g_file_test(filename, G_FILE_TEST_EXISTS) && (codec != SV_CODEC_AV1)) {
+      pipeline = g_strdup_printf(
+          "filesrc location=\"%s\" %s ! %sparse ! "
+          "video/x-%s,stream-format=byte-stream,alignment=(string)nal ! appsink "
+          "name=validatorsink",
+          filename, demux_str, codec_str, codec_str);
+    } else if (g_file_test(filename, G_FILE_TEST_EXISTS) && (codec == SV_CODEC_AV1)) {
+      pipeline = g_strdup_printf("filesrc location=\"%s\" %s ! appsink name=validatorsink", filename, demux_str);
+    } else {
+      g_warning("file '%s' does not exist", filename);
+      goto out;
+    }
   } else {
-    g_warning("file '%s' does not exist", filename);
-    goto out;
+    if (g_file_test(filename, G_FILE_TEST_EXISTS)) {
+      pipeline = g_strdup_printf(
+          "filesrc location=\"%s\" %s ! %sparse ! "
+          "video/x-%s,stream-format=%s ! appsink "
+          "name=validatorsink",
+          filename, demux_str, codec_str, codec_str, format_str);
+    } else {
+      g_warning("file '%s' does not exist", filename);
+      goto out;
+    }
   }
   g_message("GST pipeline: %s", pipeline);
 
