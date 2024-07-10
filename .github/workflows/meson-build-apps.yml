@@ -27,7 +27,6 @@ jobs:
       - uses: actions/checkout@v2
         with:
           repository: AxisCommunications/signed-video-framework
-          ref: fix/openssl3-issues
           path: svf_lib
       - uses: actions/checkout@v2
         with:
@@ -37,7 +36,7 @@ jobs:
       - name: Install ninja
         run: python -m pip install ninja==1.9.0.post1
       - name: Setup meson for the lib
-        run: meson -Ddebugprints=true --prefix $GITHUB_WORKSPACE/local_installs svf_lib build_lib
+        run: meson --prefix $GITHUB_WORKSPACE/local_installs svf_lib build_lib
       - name: Compile and install lib
         run: meson install -C build_lib
       - name: Run apt-get update
@@ -50,6 +49,11 @@ jobs:
         run: meson install -C build_apps
       - name: Run validator on test-files
         run: |
+          $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/test_h264.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/signed_test_h264.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/signed_test_h264_modified_frame_137.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator -c h265 svf_apps/test-files/test_h265.mp4
+          $GITHUB_WORKSPACE/local_installs/bin/validator -c h265 svf_apps/test-files/signed_test_h265.mp4
           $GITHUB_WORKSPACE/local_installs/bin/validator -c h264 svf_apps/test-files/signed_vendor_axis.h264
           cat validation_results.txt
       - name: Copy test files for signing
