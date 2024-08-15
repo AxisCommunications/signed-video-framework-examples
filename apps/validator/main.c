@@ -581,12 +581,12 @@ main(int argc, char **argv)
   status = 0;
 out:
   // End of session. Free objects.
-  gst_object_unref(bus);
+  if (bus) gst_object_unref(bus);
   g_free(usage);
   g_free(pipeline);
   if (error) g_error_free(error);
   if (data) {
-    gst_object_unref(data->source);
+    if (data->source) gst_object_unref(data->source);
     g_main_loop_unref(data->loop);
     signed_video_free(data->sv);
     g_free(data->product_info);
