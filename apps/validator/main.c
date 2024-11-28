@@ -375,19 +375,20 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       fprintf(f, "-----------------------------\n");
       if (data->invalid_gops > 0) {
         fprintf(f, "VIDEO IS INVALID!\n");
-      } else if (data->no_sign_gops > 0) {
-        fprintf(f, "VIDEO IS NOT SIGNED!\n");
       } else if (data->valid_gops_with_missing > 0) {
         fprintf(f, "VIDEO IS VALID, BUT HAS MISSING FRAMES!\n");
       } else if (data->valid_gops > 0) {
         fprintf(f, "VIDEO IS VALID!\n");
+      } else if (data->no_sign_gops > 0) {
+        fprintf(f, "VIDEO IS NOT SIGNED!\n");
       } else {
         fprintf(f, "NO COMPLETE GOPS FOUND!\n");
       }
+      gint num_unsigned_gops = (data->invalid_gops || data->valid_gops_with_missing || data->valid_gops) ? 0 : data->no_sign_gops;
       fprintf(f, "Number of valid GOPs: %d\n", data->valid_gops);
       fprintf(f, "Number of valid GOPs with missing NALUs: %d\n", data->valid_gops_with_missing);
       fprintf(f, "Number of invalid GOPs: %d\n", data->invalid_gops);
-      fprintf(f, "Number of GOPs without signature: %d\n", data->no_sign_gops);
+      fprintf(f, "Number of GOPs without signature: %d\n", num_unsigned_gops);
       fprintf(f, "-----------------------------\n");
       fprintf(f, "\nProduct Info\n");
       fprintf(f, "-----------------------------\n");
