@@ -474,6 +474,7 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
   char last_ts_str[80] = {'\0'};
   bool has_timestamp = false;
   float bitrate_increase = 0.0f;
+  bool is_unsigned = false;
 
   if (data->total_bytes) {
     bitrate_increase = 100.0f * data->sei_bytes / (float)(data->total_bytes - data->sei_bytes);
@@ -522,14 +523,21 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         fprintf(f, "VIDEO IS VALID!\n");
       } else if (data->no_sign_gops > 0) {
         fprintf(f, "VIDEO IS NOT SIGNED!\n");
+      } else if (data->auth_report) {
+        fprintf(f, "VIDEO IS NOT SIGNED!\n");
+        is_unsigned = true;
       } else {
         fprintf(f, "NO COMPLETE GOPS FOUND!\n");
       }
       gint num_unsigned_gops = (data->invalid_gops || data->valid_gops_with_missing || data->valid_gops) ? 0 : data->no_sign_gops;
-      fprintf(f, "Number of valid GOPs: %d\n", data->valid_gops);
-      fprintf(f, "Number of valid GOPs with missing NALUs: %d\n", data->valid_gops_with_missing);
-      fprintf(f, "Number of invalid GOPs: %d\n", data->invalid_gops);
-      fprintf(f, "Number of GOPs without signature: %d\n", num_unsigned_gops);
+      if (is_unsigned) {
+        fprintf(f, "Number of unsigned NAL Units: %u\n", data->auth_report->accumulated_validation.number_of_received_nalus);
+      } else {
+        fprintf(f, "Number of valid GOPs: %d\n", data->valid_gops);
+        fprintf(f, "Number of valid GOPs with missing NALUs: %d\n", data->valid_gops_with_missing);
+        fprintf(f, "Number of invalid GOPs: %d\n", data->invalid_gops);
+        fprintf(f, "Number of GOPs without signature: %d\n", num_unsigned_gops);
+      }
       fprintf(f, "-----------------------------\n");
       fprintf(f, "\nProduct Info\n");
       fprintf(f, "-----------------------------\n");
