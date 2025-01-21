@@ -425,12 +425,9 @@ try_again:
         g_warning("product info could not be transfered from authenticity report");
       }
       // Allocate memory and copy version strings.
-      if (!data->this_version && strlen(data->auth_report->this_version) > 0) {
-        data->this_version = g_malloc0(strlen(data->auth_report->this_version) + 1);
-        if (!data->this_version) {
-          g_warning("failed allocating memory for this_version");
-        } else {
-          strcpy(data->this_version, data->auth_report->this_version);
+      if (strlen(data->auth_report->this_version) > 0) {
+        if (strcmp(data->this_version, data->auth_report->this_version) != 0) {
+          g_error("unexpected mismatch in 'this_version'");
         }
       }
       if (!data->version_on_signing_side &&
@@ -564,7 +561,7 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       fprintf(f, "-----------------------------\n");
       fprintf(f, "\nVersions of signed-video-framework\n");
       fprintf(f, "-----------------------------\n");
-      fprintf(f, "Validator (%s) runs: %s\n", VALIDATOR_VERSION, this_version ? this_version : "N/A");
+      fprintf(f, "Validator (%s) runs: %s\n", VALIDATOR_VERSION, this_version);
       fprintf(f, "Camera runs:             %s\n", signing_version ? signing_version : "N/A");
       fprintf(f, "-----------------------------\n");
       fclose(f);
@@ -708,6 +705,9 @@ main(int argc, char **argv)
   data->source = gst_parse_launch(pipeline, NULL);
   data->no_container = (strlen(demux_str) == 0);
   data->codec = codec;
+  data->this_version = g_malloc0(strlen(signed_video_get_version()) + 1);
+  strcpy(data->this_version, signed_video_get_version());
+
   g_free(pipeline);
   pipeline = NULL;
 
