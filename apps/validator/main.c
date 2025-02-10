@@ -528,10 +528,10 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       }
       gint num_unsigned_gops = (data->invalid_gops || data->valid_gops_with_missing || data->valid_gops) ? 0 : data->no_sign_gops;
       if (is_unsigned) {
-        fprintf(f, "Number of unsigned NAL Units: %u\n", data->auth_report->accumulated_validation.number_of_received_nalus);
+        fprintf(f, "Number of unsigned Bitstream Units: %u\n", data->auth_report->accumulated_validation.number_of_received_nalus);
       } else {
         fprintf(f, "Number of valid GOPs: %d\n", data->valid_gops);
-        fprintf(f, "Number of valid GOPs with missing NALUs: %d\n", data->valid_gops_with_missing);
+        fprintf(f, "Number of valid GOPs with missing BUs: %d\n", data->valid_gops_with_missing);
         fprintf(f, "Number of invalid GOPs: %d\n", data->invalid_gops);
         fprintf(f, "Number of GOPs without signature: %d\n", num_unsigned_gops);
       }
