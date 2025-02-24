@@ -42,7 +42,7 @@
 
 #define RESULTS_FILE "validation_results.txt"
 // Increment VALIDATOR_VERSION when a change is affecting the code.
-#define VALIDATOR_VERSION "v2.0.0"  // Requires at least signed-video-framework v2.0.1
+#define VALIDATOR_VERSION "v2.0.1"  // Requires at least signed-video-framework v2.0.4
 
 typedef struct {
   GMainLoop *loop;
@@ -51,7 +51,7 @@ typedef struct {
 
   signed_video_t *sv;
   signed_video_authenticity_t *auth_report;
-  signed_video_product_info_t *product_info;
+  signed_video_product_info_t product_info;
   char *version_on_signing_side;
   char *this_version;
   bool no_container;
@@ -91,53 +91,19 @@ static gsize ongoing_obu_size = 0;
 const bool parse_av1_manually = true;
 #define METADATA_TYPE_USER_PRIVATE 25
 
-/* Helper function that copies a string and (re)allocates memory if necessary. */
-static gint
-reallocate_memory_and_copy_string(gchar **dst_str, const gchar *src_str)
-{
-  if (!dst_str) return 0;
-  // If the |src_str| is a NULL pointer make sure to copy an empty string.
-  if (!src_str) src_str = "";
-
-  gsize dst_size = *dst_str ? strlen(*dst_str) + 1 : 0;
-  const gsize src_size = strlen(src_str) + 1;
-  gint success = 0;
-  if (src_size != dst_size) {
-    gchar *new_dst_str = realloc(*dst_str, src_size);
-    if (!new_dst_str) goto done;
-
-    *dst_str = new_dst_str;
-  }
-  strcpy(*dst_str, src_str);
-  success = 1;
-
-done:
-  if (!success) {
-    free(*dst_str);
-    *dst_str = NULL;
-  }
-
-  return success;
-}
-
 /* Helper function to copy signed_video_product_info_t. */
 static gint
 copy_product_info(signed_video_product_info_t *dst, const signed_video_product_info_t *src)
 {
-  if (!src) return 0;
+  if (!src || !dst) return 0;
 
-  gint success = 0;
-  if (!reallocate_memory_and_copy_string(&dst->hardware_id, src->hardware_id)) goto done;
-  if (!reallocate_memory_and_copy_string(&dst->firmware_version, src->firmware_version)) goto done;
-  if (!reallocate_memory_and_copy_string(&dst->serial_number, src->serial_number)) goto done;
-  if (!reallocate_memory_and_copy_string(&dst->manufacturer, src->manufacturer)) goto done;
-  if (!reallocate_memory_and_copy_string(&dst->address, src->address)) goto done;
+  strcpy(dst->hardware_id, src->hardware_id);
+  strcpy(dst->firmware_version, src->firmware_version);
+  strcpy(dst->serial_number, src->serial_number);
+  strcpy(dst->manufacturer, src->manufacturer);
+  strcpy(dst->address, src->address);
 
-  success = 1;
-
-done:
-
-  return success;
+  return 1;
 }
 
 static void
@@ -415,13 +381,7 @@ try_again:
       }
       strcat(result, data->auth_report->latest_validation.validation_str);
       post_validation_result_message(sink, bus, result);
-      // Allocate memory for |product_info| the first time it will be copied from the authenticity
-      // report.
-      if (!data->product_info) {
-        data->product_info =
-            (signed_video_product_info_t *)g_malloc0(sizeof(signed_video_product_info_t));
-      }
-      if (!copy_product_info(data->product_info, &(data->auth_report->product_info))) {
+      if (!copy_product_info(&(data->product_info), &(data->auth_report->product_info))) {
         g_warning("product info could not be transfered from authenticity report");
       }
       // Allocate memory and copy version strings.
@@ -538,15 +498,11 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
       fprintf(f, "-----------------------------\n");
       fprintf(f, "\nProduct Info\n");
       fprintf(f, "-----------------------------\n");
-      if (data->product_info) {
-        fprintf(f, "Hardware ID:      %s\n", data->product_info->hardware_id);
-        fprintf(f, "Serial Number:    %s\n", data->product_info->serial_number);
-        fprintf(f, "Firmware version: %s\n", data->product_info->firmware_version);
-        fprintf(f, "Manufacturer:     %s\n", data->product_info->manufacturer);
-        fprintf(f, "Address:          %s\n", data->product_info->address);
-      } else {
-        fprintf(f, "NOT PRESENT!\n");
-      }
+      fprintf(f, "Hardware ID:      %s\n", data->product_info.hardware_id);
+      fprintf(f, "Serial Number:    %s\n", data->product_info.serial_number);
+      fprintf(f, "Firmware version: %s\n", data->product_info.firmware_version);
+      fprintf(f, "Manufacturer:     %s\n", data->product_info.manufacturer);
+      fprintf(f, "Address:          %s\n", data->product_info.address);
       fprintf(f, "-----------------------------\n");
       fprintf(f, "\nSigned Video timestamps\n");
       fprintf(f, "-----------------------------\n");
@@ -758,7 +714,6 @@ out:
     if (data->source) gst_object_unref(data->source);
     g_main_loop_unref(data->loop);
     signed_video_free(data->sv);
-    g_free(data->product_info);
     g_free(data->this_version);
     g_free(data->version_on_signing_side);
     g_free(data);

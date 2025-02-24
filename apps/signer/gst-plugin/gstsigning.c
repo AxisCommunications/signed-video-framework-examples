@@ -371,7 +371,7 @@ setup_signing(GstSigning *signing, GstCaps *caps)
     GST_DEBUG_OBJECT(signing, "failed to generate pem file");
     goto generate_private_key_failed;
   }
-  if (signed_video_set_private_key_new(priv->signed_video, private_key, private_key_size) != SV_OK) {
+  if (signed_video_set_private_key(priv->signed_video, private_key, private_key_size) != SV_OK) {
     GST_DEBUG_OBJECT(signing, "failed to set private key content");
     goto set_private_key_failed;
   }
@@ -379,7 +379,7 @@ setup_signing(GstSigning *signing, GstCaps *caps)
   // Send properties information to video library.
   if (signed_video_set_product_info(priv->signed_video, "N/A", signed_video_get_version(), "N/A",
           "Signed Video Framework",
-          "github.com/axteams-software/signed-video-framework") != SV_OK) {
+          "github.com/AxisCommunications/signed-video-framework") != SV_OK) {
     GST_ERROR_OBJECT(signing, "failed to set properties");
     goto product_info_failed;
   }
