@@ -27,17 +27,34 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <stdio.h>  // FILE, etc
+#include <string.h>  // strstr, strcat
+#if defined(_WIN32) || defined(_WIN64)
+#include <direct.h>
+#define getcwd _getcwd  // "deprecation" warning
+#else
+#include <unistd.h>  // getcwd
+#endif
 
 #include "gstsigning.h"
 #include "gstsigning_defines.h"
 #include <signed-video-framework/signed_video_common.h>
 #include <signed-video-framework/signed_video_openssl.h>
 #include <signed-video-framework/signed_video_sign.h>
+#include <signed-video-framework/sv_vendor_axis_communications.h>
 
 GST_DEBUG_CATEGORY_STATIC(gst_signing_debug);
 #define GST_CAT_DEFAULT gst_signing_debug
 
+enum
+{
+  PROP_0,
+  PROP_PROVISIONED
+};
+#define DEFAULT_PROVISIONED 0  // Key is not provisioned
+
 struct _GstSigningPrivate {
+  gint provisioned;
   signed_video_t *signed_video;
   GstClockTime last_pts;
 };
@@ -73,6 +90,42 @@ static gboolean
 terminate_signing(GstSigning *signing);
 
 static void
+gst_signing_get_property(GObject * object, guint prop_id, GValue * value, GParamSpec * pspec)
+{
+  GstSigning *signing = GST_SIGNING(object);
+
+  GST_OBJECT_LOCK(signing);
+  switch (prop_id) {
+    case PROP_PROVISIONED:
+      g_value_set_int(value, signing->priv->provisioned);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK(signing);
+}
+
+static void
+gst_signing_set_property(GObject * object, guint prop_id, const GValue * value, GParamSpec * pspec)
+{
+  GstSigning *signing = GST_SIGNING(object);
+  GstSigningPrivate *priv = signing->priv;
+
+  GST_OBJECT_LOCK(signing);
+  switch (prop_id) {
+    case PROP_PROVISIONED:
+      priv->provisioned = g_value_get_int(value);
+      GST_DEBUG_OBJECT(object, "new provisioned value: %d", priv->provisioned);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK(signing);
+}
+
+static void
 gst_signing_class_init(GstSigningClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
@@ -89,13 +142,20 @@ gst_signing_class_init(GstSigningClass *klass)
   transform_class->sink_event = GST_DEBUG_FUNCPTR(gst_signing_sink_event);
 
   gst_element_class_set_static_metadata(element_class, "Signed Video", "Formatter/Video",
-      "Add SEI nalus containing signatures for authentication.",
+      "Add SEIs containing signatures for authentication.",
       "Signed Video Framework <github.com/AxisCommunications/signed-video-framework-examples>");
 
   gst_element_class_add_static_pad_template(element_class, &sink_template);
   gst_element_class_add_static_pad_template(element_class, &src_template);
 
   gobject_class->finalize = gst_signing_finalize;
+  gobject_class->get_property = gst_signing_get_property;
+  gobject_class->set_property = gst_signing_set_property;
+
+  // Install properties
+  g_object_class_install_property(gobject_class, PROP_PROVISIONED,
+      g_param_spec_int("provisioned", "Provisioned key", "Use pre-generated key and certificate",
+      0, 1, DEFAULT_PROVISIONED, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -168,7 +228,8 @@ create_buffer_with_current_time(GstSigning *signing)
  * Returns the number of nalus that were prepended to @current_au,
  * or -1 on error. */
 static gint
-get_and_add_sei(GstSigning *signing, GstBuffer * current_au, gint idx, const guint8 * peek_nalu, gsize peek_nalu_size)
+get_and_add_sei(GstSigning *signing, GstBuffer * current_au, gint idx, const guint8 * peek_nalu,
+    gsize peek_nalu_size)
 {
   SignedVideoReturnCode sv_rc;
   gint prepend_count = 0;
@@ -180,7 +241,8 @@ get_and_add_sei(GstSigning *signing, GstBuffer * current_au, gint idx, const gui
    * signed_video_get_sei(signed_video_t *self, uint8_t **sei, size_t *sei_size,
    *     unsigned *payload_offset, const uint8_t *peek_nalu,
    *     size_t peek_nalu_size, unsigned *num_pending_seis); */
-  sv_rc = signed_video_get_sei (signing->priv->signed_video, &sei, &sei_size, NULL, peek_nalu, peek_nalu_size, NULL);
+  sv_rc = signed_video_get_sei (signing->priv->signed_video, &sei, &sei_size, NULL, peek_nalu,
+      peek_nalu_size, NULL);
   while (sv_rc == SV_OK && sei_size > 0 && sei) {
     GstMemory *prepend_mem;
 
@@ -193,7 +255,8 @@ get_and_add_sei(GstSigning *signing, GstBuffer * current_au, gint idx, const gui
     gst_buffer_insert_memory(current_au, idx, prepend_mem);
     prepend_count++;
 
-    sv_rc = signed_video_get_sei(signing->priv->signed_video, &sei, &sei_size, NULL, peek_nalu, peek_nalu_size, NULL);
+    sv_rc = signed_video_get_sei(signing->priv->signed_video, &sei, &sei_size, NULL, peek_nalu,
+        peek_nalu_size, NULL);
   }
 
   if (sv_rc != SV_OK) {
@@ -220,7 +283,8 @@ gst_signing_transform_ip(GstBaseTransform *trans, GstBuffer *buf)
   priv->last_pts = GST_BUFFER_PTS(buf);
   // last_pts is an GstClockTime object, which is measured in nanoseconds.
   const gint64 timestamp_usec = (const gint64)(priv->last_pts / 1000);
-  const gint64 *timestamp_usec_ptr = priv->last_pts == GST_CLOCK_TIME_NONE ? NULL : &timestamp_usec;
+  const gint64 *timestamp_usec_ptr =
+      priv->last_pts == GST_CLOCK_TIME_NONE ? NULL : &timestamp_usec;
 
   GST_DEBUG_OBJECT(signing, "got buffer with %d memories", gst_buffer_n_memory(buf));
   while (idx < gst_buffer_n_memory(buf)) {
@@ -331,6 +395,82 @@ terminate_signing(GstSigning *signing)
   return TRUE;
 }
 
+#define MAX_PATH_LENGTH 500
+static gboolean
+read_file_content(const char *filename, char **content, gsize *content_size)
+{
+  gboolean success = FALSE;
+  FILE *fp = NULL;
+  char full_path[MAX_PATH_LENGTH] = {0};
+  char cwd[MAX_PATH_LENGTH] = {0};
+
+  *content = NULL;
+  *content_size = 0;
+
+  if (!getcwd(cwd, sizeof(cwd))) {
+    goto done;
+  }
+
+  // Find the root location of the library.
+  char *lib_root = NULL;
+  char *next_lib_root = strstr(cwd, "signed-video-framework-examples");
+  if (!next_lib_root) {
+    // Current location is not inside signed-video-framework. Assuming current working directory is
+    // the parent directory, to give it another try. If that is not the case opening the |full_path|
+    // will fail, which is fine since the true location is not known anyhow.
+    strcat(cwd, "/signed-video-framework-examples");
+    next_lib_root = strstr(cwd, "signed-video-framework-examples");
+  }
+  while (next_lib_root) {
+    lib_root = next_lib_root;
+    next_lib_root = strstr(next_lib_root + 1, "signed-video-framework-examples");
+  }
+  if (!lib_root) {
+    goto done;
+  }
+  // Terminate string after lib root.
+  memset(lib_root + strlen("signed-video-framework-examples"), '\0', 1);
+
+  // Get certificate chain from folder test-files/.
+  strcat(full_path, cwd);
+  strcat(full_path, "/test-files/");
+  strcat(full_path, filename);
+
+  fp = fopen(full_path, "rb");
+  if (!fp) {
+    goto done;
+  }
+
+  fseek(fp, 0L, SEEK_END);
+  size_t file_size = ftell(fp);
+  if (file_size == 0) {
+    goto done;
+  }
+
+  *content = calloc(1, file_size + 1);  // One extra byte for '\0' in case the content is a string.
+  if (!(*content)) {
+    goto done;
+  }
+
+  rewind(fp);
+  if (fread(*content, sizeof(char), file_size / sizeof(char), fp) == 0) {
+    goto done;
+  }
+  *content_size = file_size;
+
+  success = TRUE;
+
+done:
+  if (fp) {
+    fclose(fp);
+  }
+  if (!success) {
+    free(*content);
+  }
+
+  return success;
+}
+
 static gboolean
 setup_signing(GstSigning *signing, GstCaps *caps)
 {
@@ -340,6 +480,8 @@ setup_signing(GstSigning *signing, GstCaps *caps)
   SignedVideoCodec codec;
   char *private_key = NULL;
   size_t private_key_size = 0;
+  char *certificate_chain = NULL;
+  size_t certificate_chain_size = 0;
 
   g_assert(caps != NULL);
 
@@ -367,9 +509,26 @@ setup_signing(GstSigning *signing, GstCaps *caps)
     GST_ERROR_OBJECT(signing, "could not create Signed Video object");
     goto create_failed;
   }
-  if (signed_video_generate_ecdsa_private_key(PATH_TO_KEY_FILES, &private_key, &private_key_size) != SV_OK) {
-    GST_DEBUG_OBJECT(signing, "failed to generate pem file");
-    goto generate_private_key_failed;
+
+  if (!priv->provisioned) {
+    if (signed_video_generate_ecdsa_private_key(PATH_TO_KEY_FILES, &private_key, &private_key_size) != SV_OK) {
+      GST_DEBUG_OBJECT(signing, "failed to generate pem file");
+      goto generate_private_key_failed;
+    }
+  } else {
+    if (!read_file_content("private_ecdsa_key.pem", &private_key, &private_key_size)) {
+      goto generate_private_key_failed;
+    }
+    if (!read_file_content("cert_chain.pem", &certificate_chain, &certificate_chain_size)) {
+      goto read_cert_failed;
+    }
+    // Use the Axis api to set the certificate chain without attestation. This will
+    // trigger factory provisioned signing in the library.
+    if (sv_vendor_axis_communications_set_attestation_report(priv->signed_video, NULL, 0,
+        certificate_chain) != SV_OK) {
+      GST_DEBUG_OBJECT(signing, "failed to set certificate chain content");
+      goto set_cert_failed;
+    }
   }
   if (signed_video_set_private_key(priv->signed_video, private_key, private_key_size) != SV_OK) {
     GST_DEBUG_OBJECT(signing, "failed to set private key content");
@@ -384,12 +543,18 @@ setup_signing(GstSigning *signing, GstCaps *caps)
     goto product_info_failed;
   }
 
+  g_free(certificate_chain);
+  g_free(private_key);
+
   return TRUE;
 
 product_info_failed:
 set_private_key_failed:
-generate_private_key_failed:
+set_cert_failed:
+  g_free(certificate_chain);
+read_cert_failed:
   g_free(private_key);
+generate_private_key_failed:
   signed_video_free(priv->signed_video);
   priv->signed_video = NULL;
 create_failed:
