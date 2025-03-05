@@ -102,6 +102,7 @@ main(gint argc, gchar *argv[])
       "Usage:\n%s [-h] [-c codec] filename\n\n"
       "Optional\n"
       "  -c codec  : 'h264' (default) or 'h265'\n"
+      "  -p        : provisioned key, i.e., public key in cert (needs lib to be built with Axis)'\n"
       "Required\n"
       "  filename  : Name of the file to be signed.\n",
       argv[0]);
@@ -112,6 +113,7 @@ main(gint argc, gchar *argv[])
   gchar *mux_str = "mp4mux";
   gchar *filename = NULL;
   gchar *outfilename = NULL;
+  gboolean provisioned = FALSE;
 
   GstElement *pipeline = NULL;
   GstElement *filesrc = NULL;
@@ -139,6 +141,8 @@ main(gint argc, gchar *argv[])
     } else if (strcmp(argv[arg], "-c") == 0) {
       arg++;
       codec_str = argv[arg];
+    } else if (strcmp(argv[arg], "-p") == 0) {
+      provisioned = TRUE;
     } else if (strncmp(argv[arg], "-", 1) == 0) {
       // Unknown option.
       g_message("Unknown option: %s\n%s", argv[arg], usage);
@@ -216,6 +220,9 @@ main(gint argc, gchar *argv[])
     parser = gst_element_factory_make("h265parse", NULL);
   }
   signedvideo = gst_element_factory_make("signing", NULL);
+  if (provisioned) {
+    g_object_set(G_OBJECT(signedvideo), "provisioned", 1, NULL);
+  }
   muxer = gst_element_factory_make(mux_str, NULL);
   filesink = gst_element_factory_make("filesink", NULL);
 

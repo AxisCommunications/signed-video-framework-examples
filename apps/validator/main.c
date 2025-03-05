@@ -386,6 +386,11 @@ try_again:
       }
       // Allocate memory and copy version strings.
       if (strlen(data->auth_report->this_version) > 0) {
+        if (strstr(data->auth_report->this_version, "ONVIF") != NULL) {
+          g_free(data->this_version);
+          data->this_version = g_malloc0(strlen(data->auth_report->this_version) + 1);
+          strcpy(data->this_version, data->auth_report->this_version);
+        }
         if (strcmp(data->this_version, data->auth_report->this_version) != 0) {
           g_error("unexpected mismatch in 'this_version'");
         }
