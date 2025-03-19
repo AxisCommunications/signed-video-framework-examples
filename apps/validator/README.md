@@ -5,8 +5,8 @@ Note: This example application code also serves as example code for how to imple
 the *Signed Video Framework*.
 
 ## Prerequisites
-This application relies on GstAppSink (part of gStreamer) and signed-video-framework.
-- [gStreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c)
+This application relies on GstAppSink (part of GStreamer) and signed-video-framework.
+- [GStreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c)
 - [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework)
 
 ## Description
