@@ -5,15 +5,15 @@ Note: This example application code also serves as example code for how to imple
 *Signed Video Framework*.
 
 ## Prerequisites
-This application relies on gStreamer and signed-video-framework.
-- [gStreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c)
+This application relies on GStreamer and signed-video-framework.
+- [GStreamer](https://gstreamer.freedesktop.org/documentation/installing/index.html?gi-language=c)
 - [signed-video-framework](https://github.com/AxisCommunications/signed-video-framework)
 
 ## Description
 The application processes a file NALU by NALU and adds signatures in SEIs, provided by the
 *Signed Video Framework*. A successfully signed GOP prints it on the screen.
 
-It is implemented as a gStreamer element that process every NALU and adds SEI NALs to the stream repeatedly.
+It is implemented as a GStreamer element that process every NALU and adds SEI NALs to the stream repeatedly.
 The signed video is written to a new file, prepending the filenamne with `signed_`. That is, `test_h264.mp4` becomes `signed_test_h264.mp4`. The application requires the file to process to be in the current directory.
 
 ## Building the signer application
@@ -33,7 +33,7 @@ Build and install the library locally in `./my_installs/`.
 meson --prefix $PWD/my_installs signed-video-framework build_lib
 meson install -C build_lib
 ```
-Then build and install the `signer` in the same place. Since this application is implemented as a gStreamer element set `GST_PLUGIN_PATH` for gStreamer to find it.
+Then build and install the `signer` in the same place. Since this application is implemented as a GStreamer element set `GST_PLUGIN_PATH` for GStreamer to find it.
 ```
 export GST_PLUGIN_PATH=$PWD/my_installs
 meson --prefix $PWD/my_installs -Dsigner=true signed-video-framework-examples build_apps

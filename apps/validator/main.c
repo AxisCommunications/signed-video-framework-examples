@@ -166,7 +166,7 @@ is_signed_video_sei(const guint8 *nalu, SignedVideoCodec codec)
       idx++;
     } else {
       // Start code NOT present. Assume the first 4 bytes have been replaced with size,
-      // which is common in, e.g., gStreamer.
+      // which is common in, e.g., GStreamer.
       idx = 4;
     }
 

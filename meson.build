@@ -23,7 +23,7 @@ signedvideoframework_dep = declare_dependency(
   include_directories : include_directories(sv_header_dir),
 )
 
-# gStreamer is used by all applications
+# GStreamer is used by all applications
 gst_req = '>= 1.0.0'
 api_version = '1.0'
 gst_dep = dependency(
