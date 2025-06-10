@@ -454,7 +454,6 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         strftime(last_ts_str, sizeof(last_ts_str), "%a %Y-%m-%d %H:%M:%S %Z", &last_ts);
         has_timestamp = true;
       }
-      signed_video_authenticity_report_free(data->auth_report);
       g_debug("received EOS");
       f = fopen(RESULTS_FILE, "w");
       if (!f) {
@@ -531,6 +530,7 @@ on_source_message(GstBus __attribute__((unused)) *bus, GstMessage *message, Vali
         g_message("Signing was performed with Signed Video version %s", signing_version);
       }
       g_message("Validation complete. Results printed to '%s'.", RESULTS_FILE);
+      signed_video_authenticity_report_free(data->auth_report);
       g_main_loop_quit(data->loop);
       break;
     case GST_MESSAGE_ERROR:
