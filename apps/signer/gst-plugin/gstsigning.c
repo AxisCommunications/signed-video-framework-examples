@@ -41,7 +41,6 @@
 #include <signed-video-framework/signed_video_common.h>
 #include <signed-video-framework/signed_video_openssl.h>
 #include <signed-video-framework/signed_video_sign.h>
-#include <signed-video-framework/sv_vendor_axis_communications.h>
 
 GST_DEBUG_CATEGORY_STATIC(gst_signing_debug);
 #define GST_CAT_DEFAULT gst_signing_debug
