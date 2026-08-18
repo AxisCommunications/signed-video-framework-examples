@@ -27,11 +27,11 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out signed-video-framework under $GITHUB_WORKSPACE, so the apps can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2.8.0
         with:
           repository: AxisCommunications/signed-video-framework
           path: svf_lib
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2.8.0
         with:
           path: svf_apps
       - name: Install meson
